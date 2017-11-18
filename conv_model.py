@@ -83,7 +83,7 @@ class Net:
 
         preds_of_actions_taken = tf.reduce_sum(self.policy_preds * tf.one_hot(self.actions_taken, 
             depth=c.NUM_ACTIONS), axis=1)
-        self.loss = -math.log(preds_of_actions_taken) * (self.r_d - self.value_preds) # TODO: incorporate loss?
+        self.loss = -np.log(preds_of_actions_taken) * (self.r_d - self.value_preds) # TODO: incorporate loss?
         self.train_op = tf.contrib.kfac.optimizer.KfacOptimizer(c.LEARN_RATE, 
             cov_ema_decay=c.MOVING_AVG_DECAY, damping=c.DAMPING_LAMBDA, 
             layer_collection=self.layer_collection, momentum=c.KFAC_MOMENTUM)
@@ -156,7 +156,7 @@ class Net:
         print "\nloss: %.6f \n" % (loss)
 
     # TODO
-    def predict(self)
+    def predict(self):
         pass
 
 
