@@ -1,8 +1,6 @@
 import gym
-import cv2
 import argparse
 import random
-import constants as c
 
 from datetime import datetime
 from os.path import join
