@@ -41,10 +41,6 @@ def arg_parser():
                         action='store_true')
 
     # Training / Evaluation
-    parser.add_argument('--train',
-                        help='Train the model while running.',
-                        dest='train',
-                        action='store_true')
     parser.add_argument('--no_train',
                         help="Don't train the model while running.",
                         dest='train',
