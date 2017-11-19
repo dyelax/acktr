@@ -113,7 +113,6 @@ def get_env(env_name, results_save_dir, seed):
     Initialize the OpenAI Gym environment.
 
     :param env_name: The name of the gym environment to use, (e.g. 'Pong-v0')
-    :param train: Whether the environment is for training.
     :param results_save_dir: Output directory for results.
     :param seed: The random seed.
 
