@@ -1,4 +1,5 @@
 import tensorflow as tf
+import constants as c
 from random import randint
 
 # noinspection PyAttributeOutsideInit
@@ -11,8 +12,9 @@ class RandomAgent(object):
         self.define_graph()
 
     def define_graph(self):
-        self.input = tf.placeholder(tf.float32, (None, 84, 84, 4))
-        self.w = tf.Variable(tf.truncated_normal((84*84*4, self.n_actions), stddev=0.01))
+        self.input = tf.placeholder(tf.float32, (None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
+        self.w = tf.Variable(tf.truncated_normal(
+            (c.IN_HEIGHT * c.IN_WIDTH * c.IN_CHANNELS, self.n_actions), stddev=0.01))
         self.b = tf.Variable(tf.constant(0.1), (self.n_actions,))
         self.preds = self.get_preds(self.input)
 
