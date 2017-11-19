@@ -8,7 +8,6 @@ from random_agent import RandomAgent
 
 def run(args):
     env = get_env(args.env,
-                  train=args.train,
                   results_save_dir=args.results_dir,
                   seed=args.seed)
 
@@ -21,13 +20,8 @@ def run(args):
     for ep in xrange(args.num_eps):
         state = env.reset()
 
-        # 30 no-ops
-        # TODO: This is maybe only for evaluation
-        for i in xrange(30):
-            state, reward, terminal, _ = env.step(0)
-
         while True:
-            action = agent.get_action(np.array([state]))
+            action = agent.get_action(np.expand_dims(state, axis=0))
             state, reward, terminal, _ = env.step(action)
 
             if args.render:
@@ -35,7 +29,7 @@ def run(args):
 
             if args.train:
                 # TODO: Figure out batching.
-                global_step = agent.train_step(np.array([state]),
+                global_step = agent.train_step(np.expand_dims(state, axis=0),
                                                np.array([action]),
                                                np.array([reward]),
                                                np.array([terminal]))

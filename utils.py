@@ -8,7 +8,8 @@ from datetime import datetime
 from os.path import join
 from sys import maxint
 
-from atari_wrapper import FireResetEnv, MapState, FrameStack, LimitLength
+from atari_wrapper import make_atari, wrap_deepmind
+
 
 #
 # CLI
@@ -27,7 +28,7 @@ def arg_parser():
     # General
     parser.add_argument('--env',
                         help='Gym environment name',
-                        default='Pong-v0')
+                        default='PongNoFrameskip-v4')
     parser.add_argument('--gpu',
                         help='comma separated list of GPU(s) to use.',
                         default='0')
@@ -106,26 +107,12 @@ def arg_parser():
 
     return parser
 
-#
-# Data
-#
-
-def resize(img, img_size):
-    return cv2.resize(img, img_size)
-
-def grayscale(img):
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-def preprocess(img):
-    img = resize(img, (c.IN_HEIGHT, c.IN_WIDTH))
-    img = grayscale(img)
-    return img
 
 #
 # Gym
 #
 
-def get_env(env_name, train, results_save_dir, seed):
+def get_env(env_name, results_save_dir, seed):
     """
     Initialize the OpenAI Gym environment.
 
@@ -136,17 +123,12 @@ def get_env(env_name, train, results_save_dir, seed):
 
     :return: The initialized gym environment.
     """
-    env = gym.make(env_name)
+    env = make_atari(env_name)
+    env = wrap_deepmind(env, frame_stack=True, scale=True)
     env.seed(seed)
 
-    env = FireResetEnv(env)
-    env = MapState(env, preprocess)
-    # TODO (Mike): frame skipping / max over 2 consecutive frames.
-    # Described here: https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/
-    env = FrameStack(env, c.IN_CHANNELS)
-
-    if train: env = LimitLength(env, 60000)
-    if results_save_dir: env = gym.wrappers.Monitor(env, results_save_dir)
+    if results_save_dir:
+        env = gym.wrappers.Monitor(env, results_save_dir)
 
     return env
 
