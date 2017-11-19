@@ -5,41 +5,13 @@ IN_WIDTH = 42
 IN_HEIGHT = 42
 IN_CHANNELS = 6
 
-BATCH_SZ = 640
-
-DROP_RATE = 0.0
-MAX_POOL = False
-
 NUM_CONV_LAYERS = 3
 CHANNEL_SIZES = [32, 64, 32]
 CONV_KERNEL_SIZES = [(8, 8), (4, 4), (3, 3)]
 CONV_STRIDES = [(4, 4), (2, 2), (1, 1)]
 FC_SIZE = 512
 
-NUM_ACTIONS = # varies per game
-
-LEARN_RATE = 0.01
-DAMPING_LAMBDA = 0
-MOVING_AVG_DECAY = 0.99
-KFAC_MOMENTUM = 0.9
-EPSILON = 0.01
-
-
-#VAL_TIMES = 20 #number of times to vlaidate per epoch
-
 assert len(CHANNEL_SIZES) == len(CONV_KERNEL_SIZES) == len(CONV_STRIDES) == NUM_CONV_LAYERS
-
-GRAPH_DIR = os.path.join(os.getcwd(), "Graph")
-MODEL_DIR = os.path.join(os.getcwd(), "Model")
-MODEL_PATH = os.path.join(MODEL_DIR, "model")
-
-TRAIN_DATA_PATH = "trainData.npy"
-VAL_DATA_PATH = "valData.npy"
-
-TRAIN_LABELS_PATH = "trainLabels.npy"
-VAL_LABELS_PATH = "valLabels.npy"
-
-
 
 #Dimensions of Network
 #(160, 320, 3) - 153,600

@@ -1,4 +1,3 @@
-
 import constants as c
 
 import tensorflow as tf
@@ -9,14 +8,16 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 
-class Net:
-    def __init__(self):
-        self.sess = tf.Session()
+class ACKTRModel:
+    def __init__(self, sess, args, num_actions):
+        self.sess = sess
+        self.args = args
+        self.num_actions = num_actions
         self.defineGraph()
 
         self.saver = tf.train.Saver()
 
-        checkPoint = tf.train.get_checkpoint_state(c.MODEL_DIR)
+        checkPoint = tf.train.get_checkpoint_state(self.args.model_load_dir)
         modelExists = checkPoint and checkPoint.model_checkpoint_path
         if modelExists:
             self.saver.restore(self.sess, checkPoint.model_checkpoint_path)
@@ -24,7 +25,7 @@ class Net:
             self.sess.run(tf.global_variables_initializer())
 
         #set up new writer
-        self.summary_writer = tf.summary.FileWriter(c.GRAPH_DIR, self.sess.graph)
+        self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
 
 
     def defineGraph(self):
@@ -66,7 +67,7 @@ class Net:
         fc_layer = tf.nn.elu(fc_layer)
 
         #policy output layer
-        policy_fc_layer = tf.layers.dense(fc_layer, c.NUM_ACTIONS)
+        policy_fc_layer = tf.layers.dense(fc_layer, self.num_actions)
 
         fisher_block = tf.contrib.kfac.fisher_blocks.FullyConnectedKFACBasicFB(layer_collection=self.layer_collection, 
             inputs=fc_layer, outputs=policy_fc_layer, has_bias=True)
@@ -82,11 +83,11 @@ class Net:
         self.layer_collection.register_block(layer_key="value_fc_layer", fisher_block=fisher_block)
 
         preds_of_actions_taken = tf.reduce_sum(self.policy_preds * tf.one_hot(self.actions_taken, 
-            depth=c.NUM_ACTIONS), axis=1)
+            depth=self.num_actions), axis=1)
         self.loss = -np.log(preds_of_actions_taken) * (self.r_d - self.value_preds) # TODO: incorporate loss?
-        self.train_op = tf.contrib.kfac.optimizer.KfacOptimizer(c.LEARN_RATE, 
-            cov_ema_decay=c.MOVING_AVG_DECAY, damping=c.DAMPING_LAMBDA, 
-            layer_collection=self.layer_collection, momentum=c.KFAC_MOMENTUM)
+        self.train_op = tf.contrib.kfac.optimizer.KfacOptimizer(self.args.lr,
+            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
+            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
         
         #summaries
         self.lossSummary = tf.summary.scalar("loss", self.loss)
@@ -95,7 +96,7 @@ class Net:
 
     # TODO train_step
     def train_step(self, trainImagesLabelsTup, valImagesLabelsTup):
-        numBatches = len(trainImagesLabelsTup[0]) / c.BATCH_SZ
+        numBatches = len(trainImagesLabelsTup[0]) / self.args.batch_size
 
         for epoch in xrange(c.NUM_EPOCHS):
             #train
@@ -103,15 +104,16 @@ class Net:
             for bNum in xrange(numBatches):
 
                 images, labels = trainImagesLabelsTup
-                startIndex = bNum*c.BATCH_SZ
-                stopIndex = startIndex + c.BATCH_SZ
+                startIndex = bNum*self.args.batch_size
+                stopIndex = startIndex + self.args.batch_size
                 xBatch = images[startIndex : stopIndex]
                 yBatch = labels[startIndex : stopIndex]
                 
                 #TRAIN STEP
                 sessArgs = [self.loss, self.lossSummary, self.preds, self.train_op]
                 feedDict = {self.x_Batch: xBatch, 
-                            self.y_Batch: yBatch}
+                            self.y_Batch: yBatch,
+                            self.drop_rate}
                 loss, summary, preds, _ = self.sess.run(sessArgs, feed_dict=feedDict)
 
                 #write summary (loss)
@@ -137,7 +139,7 @@ class Net:
             self.validate(valImagesLabelsTup)
 
         #save model
-        self.saver.save(self.sess, c.MODEL_PATH, global_step = self.glob_step)
+        self.saver.save(self.sess, self.args.model_save_path, global_step = self.glob_step)
 
 
     # TODO

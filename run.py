@@ -9,12 +9,12 @@ from random_agent import RandomAgent
 def run(args):
     env = get_env(args.env,
                   evaluate=args.evaluate,
-                  results_save_dir=args.results_save_dir,
+                  results_save_dir=args.results_dir,
                   seed=args.seed)
 
     sess = tf.Session()
     # TODO: Switch to ACKTR model
-    agent = RandomAgent(sess, env.action_space.n)
+    agent = RandomAgent(sess, args, env.action_space.n)
     sess.run(tf.global_variables_initializer())
 
     global_step = 0

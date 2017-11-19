@@ -3,8 +3,9 @@ from random import randint
 
 # noinspection PyAttributeOutsideInit
 class RandomAgent(object):
-    def __init__(self, sess, n_actions):
+    def __init__(self, sess, args, n_actions):
         self.sess = sess
+        self.args = args
         self.n_actions = n_actions
 
         self.define_graph()
