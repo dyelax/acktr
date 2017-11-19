@@ -1,6 +1,3 @@
-import os
-
-
 IN_WIDTH = 42
 IN_HEIGHT = 42
 IN_CHANNELS = 6
