@@ -8,7 +8,7 @@ from random_agent import RandomAgent
 
 def run(args):
     env = get_env(args.env,
-                  evaluate=args.evaluate,
+                  train=args.train,
                   results_save_dir=args.results_dir,
                   seed=args.seed)
 
@@ -33,7 +33,7 @@ def run(args):
             if args.render:
                 env.render()
 
-            if not args.evaluate:
+            if args.train:
                 # TODO: Figure out batching.
                 global_step = agent.train_step(np.array([state]),
                                                np.array([action]),

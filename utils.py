@@ -40,9 +40,15 @@ def arg_parser():
                         action='store_true')
 
     # Training / Evaluation
-    parser.add_argument('--evaluate',
-                        help='Evaluate instead of training',
+    parser.add_argument('--train',
+                        help='Train the model while running.',
+                        dest='train',
                         action='store_true')
+    parser.add_argument('--no_train',
+                        help="Don't train the model while running.",
+                        dest='train',
+                        action='store_false')
+    parser.set_defaults(train=True)
     parser.add_argument('--num_eps',
                         help='Max number of episodes to run',
                         default=maxint,
@@ -119,12 +125,12 @@ def preprocess(img):
 # Gym
 #
 
-def get_env(env_name, evaluate, results_save_dir, seed):
+def get_env(env_name, train, results_save_dir, seed):
     """
     Initialize the OpenAI Gym environment.
 
     :param env_name: The name of the gym environment to use, (e.g. 'Pong-v0')
-    :param evaluate: Whether the environment is for evaluation instead of training.
+    :param train: Whether the environment is for training.
     :param results_save_dir: Output directory for results.
     :param seed: The random seed.
 
@@ -139,7 +145,7 @@ def get_env(env_name, evaluate, results_save_dir, seed):
     # Described here: https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/
     env = FrameStack(env, c.IN_CHANNELS)
 
-    if not evaluate: env = LimitLength(env, 60000)
+    if train: env = LimitLength(env, 60000)
     if results_save_dir: env = gym.wrappers.Monitor(env, results_save_dir)
 
     return env
