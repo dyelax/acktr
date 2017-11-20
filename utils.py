@@ -79,24 +79,28 @@ def arg_parser():
                         default=0.01,
                         type=float)
     parser.add_argument('--damping_lambda',
-                        help='The damping factor for _______.', # TODO: Fill in the blank
+                        help='The damping factor for KFAC.',
                         default=0.0,
                         type=float)
     parser.add_argument('--moving_avg_decay',
-                        help='The decay factor for the moving average.',
+                        help='The decay factor for the moving average in KFAC.',
                         default=0.99,
                         type=float)
     parser.add_argument('--kfac_momentum',
                         help='The momentum term for KFAC.',
                         default=0.9,
                         type=float)
-    parser.add_argument('--epsilon',
-                        help='The epsilon for __________.', # TODO: Fill in the blank
-                        default=0.01,
-                        type=float)
     parser.add_argument('--drop_rate',
                         help='The dropout rate',
                         default=0.0,
+                        type=float)
+    parser.add_argument('--k',
+                        help='Value of k for k-step lookahead',
+                        default=5,
+                        type=int)
+    parser.add_argument('--gamma',
+                        help='The gamma value for k-step lookahead',
+                        default=0.99,
                         type=float)
 
     return parser

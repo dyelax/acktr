@@ -28,11 +28,22 @@ class ACKTRModel:
         self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
 
 
+    def registerFisherBlock(self, conv_block, layer_key, **kwargs):
+        if conv_block:
+            fisher_block = tf.contrib.kfac.fisher_blocks.ConvKFCBasicFB(layer_collection=self.layer_collection, 
+                **kwargs)
+        else:
+            fisher_block = tf.contrib.kfac.fisher_blocks.FullyConnectedKFACBasicFB(layer_collection=self.layer_collection, 
+                **kwargs)
+        self.layer_collection.register_block(layer_key=layer_key, fisher_block=fisher_block)
+
+
+    # TODO: entropy regularization
     def defineGraph(self):
         self.glob_step = tf.Variable(0, name="global_step", trainable=False)
         self.x_Batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
         self.actions_taken = tf.placeholder(dtype=tf.int32, shape=[None])
-        self.r_d = tf.placeholder(dtype=tf.float32, shape=[None])
+        self.r_labels = tf.placeholder(dtype=tf.float32, shape=[None])
 
         self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
@@ -45,120 +56,83 @@ class ACKTRModel:
             w_shape = kernelSize.extend([in_channels, out_channels])
             w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01))
             b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01))
+
             curLayer = tf.nn.conv2d(prevLayer, filter=w, strides=stride, padding="SAME") + b # TODO: padding?
-
-            fisher_block = tf.contrib.kfac.fisher_blocks.ConvKFCBasicFB(layer_collection=self.layer_collection, 
-                params=(w, b), inputs=prevLayer, outputs=curLayer, strides=stride, padding="SAME")
-            self.layer_collection.register_block(layer_key="conv_i", fisher_block=fisher_block)
-
+            self.registerFisherBlock(conv_block=True, layer_key=("conv_%d" % i), params=(w, b), inputs=prevLayer, 
+                outputs=curLayer, strides=stride, padding="SAME")
             curLayer = tf.nn.elu(curLayer)
             prevLayer = curLayer
 
-        #fully connected
+        #fully connected layer (last shared)
         conv_shape = curLayer.shape
         flat_sz = conv_shape[1].value * conv_shape[2].value * conv_shape[3].value
-        flattened = tf.reshape(curLayer, shape=[-1, flat_sz]) 
+        flattened = tf.reshape(curLayer, shape=[-1, flat_sz])
+
         fc_layer = tf.layers.dense(flattened, c.FC_SIZE, activation=None)
-
-        fisher_block = tf.contrib.kfac.fisher_blocks.FullyConnectedKFACBasicFB(layer_collection=self.layer_collection, 
-            inputs=flattened, outputs=fc_layer, has_bias=True)
-        self.layer_collection.register_block(layer_key="fc_layer", fisher_block=fisher_block)
-
+        self.registerFisherBlock(conv_block=False, layer_key="fc_layer", inputs=flattened, 
+            outputs=fc_layer, has_bias=True)
         fc_layer = tf.nn.elu(fc_layer)
 
         #policy output layer
         policy_fc_layer = tf.layers.dense(fc_layer, self.num_actions)
-
-        fisher_block = tf.contrib.kfac.fisher_blocks.FullyConnectedKFACBasicFB(layer_collection=self.layer_collection, 
-            inputs=fc_layer, outputs=policy_fc_layer, has_bias=True)
-        self.layer_collection.register_block(layer_key="policy_fc_layer", fisher_block=fisher_block)
-        
-        self.policy_preds = tf.nn.softmax(policy_fc_layer)
+        self.registerFisherBlock(conv_block=False, layer_key="policy_fc_layer", inputs=fc_layer, 
+            outputs=policy_fc_layer, has_bias=True)
+        self.policy_probs = tf.nn.softmax(policy_fc_layer)
 
         #value output layer
         self.value_preds = tf.layers.dense(fc_layer, 1)
-
-        fisher_block = tf.contrib.kfac.fisher_blocks.FullyConnectedKFACBasicFB(layer_collection=self.layer_collection, 
-            inputs=fc_layer, outputs=self.value_preds, has_bias=True)
-        self.layer_collection.register_block(layer_key="value_fc_layer", fisher_block=fisher_block)
-
-        preds_of_actions_taken = tf.reduce_sum(self.policy_preds * tf.one_hot(self.actions_taken, 
+        self.registerFisherBlock(conv_block=False, layer_key="value_fc_layer", inputs=fc_layer, 
+            outputs=self.value_preds, has_bias=True)
+        probs_of_actions_taken = tf.reduce_sum(self.policy_probs * tf.one_hot(self.actions_taken, 
             depth=self.num_actions), axis=1)
-        self.loss = -np.log(preds_of_actions_taken) * (self.r_d - self.value_preds) # TODO: incorporate loss?
-        self.train_op = tf.contrib.kfac.optimizer.KfacOptimizer(self.args.lr,
+        
+        self.actor_loss = -np.reduce_sum(np.log(probs_of_actions_taken) * self.r_labels) # TODO: is this multiplication right? need to dot instead?
+        self.critic_loss = 0.5 * tf.losses.mean_squared_error(self.r_labels, self.value_preds)
+
+        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.args.lr,
             cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
             layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
+
+        #only passing global step to one train op so it isn't double-incremented
+        self.train_op_actor = optimizer.minimize(self.actor_loss, global_step=self.global_step)
+        self.train_op_critic = optimizer.minimize(self.critic_loss)
         
         #summaries
-        self.lossSummary = tf.summary.scalar("loss", self.loss)
-        self.valLossSummary = tf.summary.scalar("val_loss", self.loss)
+        self.A_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
+        self.C_loss_summary = tf.summary.scalar("critic_loss", self.critic_loss)
 
 
-    # TODO train_step
-    def train_step(self, trainImagesLabelsTup, valImagesLabelsTup):
-        numBatches = len(trainImagesLabelsTup[0]) / self.args.batch_size
+    def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch):
+        k = self.args.k #the k from k-step return
+        V_S = sess.run([self.value_preds], feed_dict={self.x_Batch: s_batch})
+        V_S_next = sess.run([self.value_preds], feed_dict={self.x_Batch: s_next_batch})
+        V_S_next *= terminal_batch #mask out preds for termainl states
+        label_batch = (r_batch + V_S_next * np.exp(self.args.gamma, self.args.k)) - V_S
 
-        for epoch in xrange(c.NUM_EPOCHS):
-            #train
-            print "\n\nEpoch", epoch+1, "out of", c.NUM_EPOCHS, "\n\n"
-            for bNum in xrange(numBatches):
+        #train critic
+        sessArgs = [self.global_step, self.C_loss_summary, self.train_op_critic]
+        feedDict = {self.x_Batch: s_batch, 
+                    self.r_labels: label_batch}
+        step, C_summary, _ = self.sess.run(sessArgs, feed_dict=feedDict)
 
-                images, labels = trainImagesLabelsTup
-                startIndex = bNum*self.args.batch_size
-                stopIndex = startIndex + self.args.batch_size
-                xBatch = images[startIndex : stopIndex]
-                yBatch = labels[startIndex : stopIndex]
-                
-                #TRAIN STEP
-                sessArgs = [self.loss, self.lossSummary, self.preds, self.train_op]
-                feedDict = {self.x_Batch: xBatch, 
-                            self.y_Batch: yBatch,
-                            self.drop_rate}
-                loss, summary, preds, _ = self.sess.run(sessArgs, feed_dict=feedDict)
+        #train actor
+        sessArgs = [self.A_loss_summary, self.train_op_actor]
+        feedDict = {self.x_Batch: s_batch, 
+                    self.r_labels: label_batch
+                    self.action_taken: a_batch}
+        A_summary, _ = self.sess.run(sessArgs, feed_dict=feedDict)
 
-                #write summary (loss)
-                # note instead of "tf.train.global_step", really could just ask for it in sessArgs
-                self.summary_writer.add_summary(summary, global_step = tf.train.global_step(self.sess, self.glob_step))
-                #to do mannualy ...
-                #summary = tf.Summary(value=[tf.Summary.Value(tag="loss", simple_value=loss), ])
-                
-                percentDone = 100*(float(bNum)/numBatches)
-                print "\nbatch loss: %.6f \t\t\t %.2f %%" % (loss, percentDone)
-                print "first labels:", yBatch[0], yBatch[1]
-                print "first preds:", preds[0], preds[1]
-
-                # #validate if enough batches have passed
-                # everyXBatches = numBatches / c.VAL_TIMES
-                # # +1 to skip validating at start
-                # if (bNum+1)%everyXBatches == 0:
-                #     print "\nValidating..."
-                #     self.eval(valImagesLabelsTup)
-            
-            #validate at end of epoch
-            print "\nValidating..."
-            self.validate(valImagesLabelsTup)
-
-        #save model
-        self.saver.save(self.sess, self.args.model_save_path, global_step = self.glob_step)
+        if step % c.SAVE_FREQ == 0:
+            self.summary_writer.add_summary(C_summary, global_step = step))
+            self.summary_writer.add_summary(A_summary, global_step = step))
+            self.saver.save(self.sess, self.args.model_save_path, global_step = step)
 
 
-    # TODO
-    def validate(self, valImagesLabelsTup):
-        #validate
-        sessArgs = [self.preds, self.loss, self.valLossSummary]
-        feedDict = {self.x_Batch: valImagesLabelsTup[0], 
-                    self.y_Batch: valImagesLabelsTup[1], 
-                    self.training: False,
-                    self.drop_rate: 0.0}
-        preds, loss, summary =  self.sess.run(sessArgs, feed_dict=feedDict)
-        #write summary
-        self.summary_writer.add_summary(summary, global_step=tf.train.global_step(self.sess, self.glob_step))
-        #print preds and loss
-        print preds
-        print "\nloss: %.6f \n" % (loss)
-
-    # TODO
+    # TODO later: increase temp of softmax over time?
     def predict(self):
-        pass
+        '''
+        Predict all Q values for a state -> softmax dist -> sample from dist
+        '''
+        return np.random.choice(len(self.policy_probs), 1, p=self.policy_probs)[0]
 
 
