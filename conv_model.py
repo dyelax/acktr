@@ -1,9 +1,9 @@
 import constants as c
-
-import tensorflow as tf
+import glob
 import numpy as np
+import os
+import tensorflow as tf
 
-import glob, os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
