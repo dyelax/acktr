@@ -86,8 +86,13 @@ class ACKTRModel:
         probs_of_actions_taken = tf.reduce_sum(self.policy_probs * tf.one_hot(self.actions_taken, 
             depth=self.num_actions), axis=1)
         
-        self.actor_loss = -np.reduce_sum(np.log(probs_of_actions_taken) * self.r_labels) # TODO: is this multiplication right? need to dot instead?
+        self.entropy_regularization = -np.reduce_sum(self.policy_probs * np.log(self.policy_probs))
+
+        # TODO: is this multiplication right? need to dot instead?
+        self.actor_loss = -np.reduce_sum(np.log(probs_of_actions_taken) * self.r_labels) 
+                            + c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
         self.critic_loss = 0.5 * tf.losses.mean_squared_error(self.r_labels, self.value_preds)
+                            + c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
 
         optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.args.lr,
             cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
@@ -123,16 +128,18 @@ class ACKTRModel:
         A_summary, _ = self.sess.run(sessArgs, feed_dict=feedDict)
 
         if step % c.SAVE_FREQ == 0:
-            self.summary_writer.add_summary(C_summary, global_step = step))
-            self.summary_writer.add_summary(A_summary, global_step = step))
+            self.summary_writer.add_summary(C_summary, global_step = step)
+            self.summary_writer.add_summary(A_summary, global_step = step)
             self.saver.save(self.sess, self.args.model_save_path, global_step = step)
 
 
     # TODO later: increase temp of softmax over time?
-    def predict(self):
+    def predict(self, state):
         '''
         Predict all Q values for a state -> softmax dist -> sample from dist
         '''
-        return np.random.choice(len(self.policy_probs), 1, p=self.policy_probs)[0]
+        feedDict = {self.x_Batch: state}
+        policy_probs = self.sess.run(self.policy_probs, feed_dict=feedDict)
+        return np.random.choice(len(policy_probs), p=policy_probs)
 
 
