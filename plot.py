@@ -110,9 +110,9 @@ def main():
     plt.xlabel("Timesteps")
     plt.ylabel("Episode Rewards")
 
-    # ours_dirs = []
-    # for dir in args.ours_dirs: ours_dirs += glob(dir)
-    # plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)')
+    ours_dirs = []
+    for dir in args.ours_dirs: ours_dirs += glob(dir)
+    plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)')
 
     acktr_dirs = []
     for dir in args.acktr_dirs: acktr_dirs += glob(dir)
