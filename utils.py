@@ -3,10 +3,12 @@ import argparse
 import random
 
 from datetime import datetime
-from os.path import join
+from os.path import join, exists
+from os import makedirs
 from sys import maxint
 
 from atari_wrapper import make_atari, wrap_deepmind
+from monitor import Monitor
 
 
 #
@@ -56,7 +58,7 @@ def arg_parser():
     # Paths
     parser.add_argument('--results_dir',
                         help='Output directory for results',
-                        default=join('save', 'results', 'ours', date))
+                        default=join('save', 'results', 'ours', 'pong', date))
     parser.add_argument('--model_save_path',
                         help='Output directory for models',
                         default=join('save', 'models', date, 'model'))
@@ -122,7 +124,8 @@ def get_env(env_name, results_save_dir, seed):
     env.seed(seed)
 
     if results_save_dir:
-        env = gym.wrappers.Monitor(env, results_save_dir)
+        # env = gym.wrappers.Monitor(env, results_save_dir)
+        env = Monitor(env, join(get_dir(results_save_dir), '0'))
 
     return env
 
@@ -130,6 +133,17 @@ def get_env(env_name, results_save_dir, seed):
 #
 # Misc
 #
+
+def get_dir(directory):
+    """
+    Creates the given directory if it does not exist.
+
+    @param directory: The path to the directory.
+    @return: The path to the directory.
+    """
+    if not exists(directory):
+        makedirs(directory)
+    return directory
 
 def date_str():
     """

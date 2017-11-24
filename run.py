@@ -18,6 +18,10 @@ def run(args):
 
     global_step = 0
     for ep in xrange(args.num_eps):
+        print '-' * 30
+        print 'Episode: ', ep
+        print '-' * 30
+
         state = env.reset()
 
         while True:
