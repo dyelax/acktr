@@ -35,23 +35,24 @@ def ts2xy(ts):
     return x, y
 
 
-def plot_curve(xs, ys, color):
+def plot_curve(xs, ys, color, label):
     ymeans = np.mean(ys, axis=0)
     ystds = np.std(ys, axis=0)
 
     xs, ymeans_rolling = window_func(xs, ymeans, EPISODES_WINDOW, np.mean)
     _, ystds_rolling = window_func(xs, ystds, EPISODES_WINDOW, np.mean)
 
-    plt.plot(xs, ymeans_rolling, color=color)
+    plt.plot(xs, ymeans_rolling, color=color, label=label)
     plt.fill_between(xs, ymeans_rolling - ystds_rolling, ymeans_rolling + ystds_rolling,
                      facecolor=color, color=color, alpha=0.5, interpolate=True)
 
+    # Without rolling average
     # plt.plot(xs, ymeans)
     # plt.fill_between(xs, ymeans - ystds, ymeans + ystds,
     #                  facecolor=color, color=color, alpha=0.5, interpolate=True)
 
 
-def plot_results(dirs, num_timesteps, color):
+def plot_results(dirs, num_timesteps, color, label):
     tslist = []
     for dir in dirs:
         ts = load_results(dir)
@@ -65,14 +66,14 @@ def plot_results(dirs, num_timesteps, color):
     xs = np.linspace(1, num_timesteps, 1000)
     ys = np.array([np.interp(xs, run[0], run[1]) for run in runs])
 
-    plot_curve(xs, ys, color)
+    plot_curve(xs, ys, color, label)
 
 
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--ours_dirs',
-                        help='List of log directories for our acktr implementation',
+                        help='List of log directories for our ACKTR implementation',
                         nargs = '*',
                         default=['./save/results/ours/pong/*'])
     parser.add_argument('--acktr_dirs',
@@ -87,6 +88,18 @@ def main():
                         help='List of log directories for the OpenAI Baselines A2C implementation',
                         nargs = '*',
                         default=['./save/results/baselines/pong/a2c/*'])
+    parser.add_argument('--ours_color',
+                        help='The color with which to plot our ACKTR results',
+                        default='magenta')
+    parser.add_argument('--acktr_color',
+                        help='The color with which to plot the OpenAI Baselines ACKTR results',
+                        default='blue')
+    parser.add_argument('--trpo_color',
+                        help='The color with which to plot the OpenAI Baselines TRPO results',
+                        default='green')
+    parser.add_argument('--a2c_color',
+                        help='The color with which to plot the OpenAI Baselines A2C results',
+                        default='orange')
     parser.add_argument('--num_timesteps', type=int, default=int(10e6))
     parser.add_argument('--title', help = 'Title of plot', default = 'Pong')
     args = parser.parse_args()
@@ -99,19 +112,22 @@ def main():
 
     # ours_dirs = []
     # for dir in args.ours_dirs: ours_dirs += glob(dir)
-    # plot_results(ours_dirs, args.num_timesteps, 'magenta')
+    # plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)')
 
     acktr_dirs = []
     for dir in args.acktr_dirs: acktr_dirs += glob(dir)
-    plot_results(acktr_dirs, args.num_timesteps, 'blue')
+    plot_results(acktr_dirs, args.num_timesteps, args.acktr_color, 'ACKTR')
 
     trpo_dirs = []
     for dir in args.trpo_dirs: trpo_dirs += glob(dir)
-    plot_results(trpo_dirs, args.num_timesteps, 'green')
+    plot_results(trpo_dirs, args.num_timesteps, args.trpo_color, 'TRPO')
 
     a2c_dirs = []
     for dir in args.a2c_dirs: a2c_dirs += glob(dir)
-    plot_results(a2c_dirs, args.num_timesteps, 'orange')
+    plot_results(a2c_dirs, args.num_timesteps, args.a2c_color, 'A2C')
+
+    legend = plt.legend(fancybox=True, loc='upper left')
+    legend.get_frame().set_alpha(0.5)
 
     plt.tight_layout()
     plt.show()
