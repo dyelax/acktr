@@ -56,15 +56,12 @@ def arg_parser():
     # Paths
     parser.add_argument('--results_dir',
                         help='Output directory for results',
-                        default=join('save', 'results', date))
+                        default=join('save', 'results', 'ours', date))
     parser.add_argument('--model_save_path',
                         help='Output directory for models',
                         default=join('save', 'models', date, 'model'))
     parser.add_argument('--model_load_dir',
                         help='Directory of the model you want to load.')
-    parser.add_argument('--model_save_name',
-                        help='Output directory for models',
-                        default=join('save', 'models', date))
     parser.add_argument('--summary_dir',
                         help='Output directory for summaries',
                         default=join('save', 'summaries', date))
