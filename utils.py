@@ -4,7 +4,7 @@ import random
 
 from datetime import datetime
 from os.path import join, exists
-from os import makedirs
+from os import makedirs, environ
 from sys import maxint
 
 from atari_wrapper import make_atari, wrap_deepmind
@@ -15,7 +15,7 @@ from monitor import Monitor
 # CLI
 #
 
-def arg_parser():
+def parse_args():
     """
     Parse input from the command line.
 
@@ -102,7 +102,17 @@ def arg_parser():
                         default=0.99,
                         type=float)
 
-    return parser
+    args = parser.parse_args()
+
+    if args.gpu:
+        environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
+    # Create save directories if they don't exist
+    get_dir(args.results_dir)
+    get_dir(args.model_save_path.rpartition('/')[0])
+    get_dir(args.summary_dir)
+
+    return args
 
 
 #
@@ -124,8 +134,8 @@ def get_env(env_name, results_save_dir, seed):
     env.seed(seed)
 
     if results_save_dir:
-        # env = gym.wrappers.Monitor(env, results_save_dir)
-        env = Monitor(env, join(get_dir(results_save_dir), '0'))
+        env = gym.wrappers.Monitor(env, results_save_dir)
+        # env = Monitor(env, join(get_dir(results_save_dir), '0'))
 
     return env
 

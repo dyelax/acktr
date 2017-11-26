@@ -1,8 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from utils import get_env, arg_parser
-from os import environ
+from utils import get_env, parse_args
 
 from random_agent import RandomAgent
 
@@ -49,9 +48,4 @@ def run(args):
 
 
 if __name__ == '__main__':
-    args = arg_parser().parse_args()
-
-    if args.gpu:
-        environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
-    run(args)
+    run(parse_args())
