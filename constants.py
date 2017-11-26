@@ -13,6 +13,8 @@ assert len(CHANNEL_SIZES) == len(CONV_KERNEL_SIZES) == len(CONV_STRIDES) == NUM_
 
 ENTROPY_REGULARIZATION_WEIGHT = 0.01
 
+SAVE_FREQ = 500
+
 #Dimensions of Network
 #(160, 320, 3) - 153,600
 

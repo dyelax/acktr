@@ -89,6 +89,7 @@ class ACKTRModel:
 
         #value output layer
         self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
+        self.value_preds = tf.squeeze(self.value_preds)
         probs_of_actions_taken = tf.reduce_sum(self.policy_probs * tf.one_hot(self.actions_taken, 
             depth=self.num_actions), axis=1)
 
@@ -97,7 +98,7 @@ class ACKTRModel:
 
         # TODO: is this multiplication right? need to dot instead?
         self.actor_loss = -tf.reduce_sum(tf.log(probs_of_actions_taken) * self.r_labels)
-        self.critic_loss = 0.5 * tf.losses.mean_squared_error(self.r_labels, tf.squeeze(self.value_preds))
+        self.critic_loss = 0.5 * tf.losses.mean_squared_error(self.r_labels, self.value_preds)
         self.entropy_regularization = -tf.reduce_sum(self.policy_probs * tf.log(self.policy_probs))
 
         self.total_loss = self.actor_loss + self.critic_loss + c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
@@ -115,15 +116,16 @@ class ACKTRModel:
 
     def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch):
         k = self.args.k #the k from k-step return
-        V_S = sess.run([self.value_preds], feed_dict={self.x_Batch: s_batch})
-        V_S_next = sess.run([self.value_preds], feed_dict={self.x_Batch: s_next_batch})
+        V_S = self.sess.run([self.value_preds], feed_dict={self.x_Batch: s_batch})
+        V_S_next = self.sess.run([self.value_preds], feed_dict={self.x_Batch: s_next_batch})
         V_S_next *= terminal_batch #mask out preds for termainl states
-        label_batch = (r_batch + V_S_next * np.exp(self.args.gamma, self.args.k)) - V_S
+        label_batch = (r_batch + V_S_next * (self.args.gamma ** self.args.k)) - V_S
+        label_batch = np.squeeze(label_batch.T)
 
         sessArgs = [self.global_step, self.A_loss_summary, self.C_loss_summary, self.train_op]
         feedDict = {self.x_Batch: s_batch, 
                     self.r_labels: label_batch,
-                    self.action_taken: a_batch}
+                    self.actions_taken: a_batch}
         step, A_summary, C_summary, _ = self.sess.run(sessArgs, feed_dict=feedDict)
 
         if step % c.SAVE_FREQ == 0:
@@ -141,5 +143,4 @@ class ACKTRModel:
         policy_probs = self.sess.run(self.policy_probs, feed_dict=feedDict)
         policy_probs = np.squeeze(policy_probs)
         return np.random.choice(len(policy_probs), p=policy_probs)
-
 
