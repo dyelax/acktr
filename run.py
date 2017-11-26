@@ -4,6 +4,7 @@ import numpy as np
 from utils import get_env, parse_args
 
 from random_agent import RandomAgent
+from acktr_model import ACKTRModel
 
 def run(args):
     env = get_env(args.env,
@@ -12,7 +13,7 @@ def run(args):
 
     sess = tf.Session()
     # TODO: Switch to ACKTR model
-    agent = RandomAgent(sess, args, env.action_space.n)
+    agent = ACKTRModel(sess, args, env.action_space.n)
     sess.run(tf.global_variables_initializer())
 
     global_step = 0
