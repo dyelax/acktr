@@ -1,7 +1,7 @@
 save/results/ours/
-summaries/
+save/summaries/
+save/models/
 *.idea
-models/
 *.xml
 
 # Byte-compiled / optimized / DLL files
