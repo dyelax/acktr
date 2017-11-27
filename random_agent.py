@@ -47,7 +47,7 @@ class RandomAgent(object):
         :param states: A numpy array with a batch of states (shape: (batch, 84, 84, 4))
         :param actions: A numpy array with a batch of actions (shape: (batch))
         :param rewards: A numpy array with a batch of rewards (shape: (batch))
-        :param rewards: A numpy array with a batch of rewards (shape: (batch))
+        :param terminal: A numpy array with a batch of terminal (shape: (batch))
 
         :return: The action from the policy (an int in [0, self.n_actions])
         """

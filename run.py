@@ -5,8 +5,31 @@ from utils import get_env, parse_args, transform_monitor
 
 from random_agent import RandomAgent
 from acktr_model import ACKTRModel
+import collections
+import constants as c
+
+
+batch = {}
+
+def add_sars_to_batch(sars, r_d):
+    global batch
+    batch['state'].append(sars[0])
+    batch['action'].append(sars[1])
+    batch['reward'].append(r_d)
+    batch['terminal'].append(sars[3])
+
+def reset_batch():
+    global batch
+    batch = {
+        'state': [],
+        'action': [],
+        'reward': [],
+        'terminal': []
+    }
 
 def run(args):
+    global batch
+
     env = get_env(args.env,
                   results_save_dir=args.results_dir,
                   seed=args.seed)
@@ -25,22 +48,55 @@ def run(args):
 
         state = env.reset()
 
+        buff = collections.deque(args.k)
+        reset_batch()
+
         while True:
-            action = agent.get_action(np.expand_dims(state, axis=0))
-            state, reward, terminal, _ = env.step(action)
+            # Fill up the batch until it is full or we reach a terminal state
+            if len(batch['action']) < c.BATCH_SZ && !terminal:
+                start_state = state
+                action = agent.get_action(np.expand_dims(state, axis=0))
+                state, reward, terminal, _ = env.step(action)
 
-            if args.render:
-                env.render()
+                # The SARS queue is full so the first item will be popped off
+                if (len(buff) == args.k):
+                    popped_sars = buff[0]
 
-            if args.train:
-                # TODO: Figure out batching.
-                global_step = agent.train_step(np.expand_dims(state, axis=0),
-                                               np.array([action]),
-                                               np.array([reward]),
-                                               np.array([terminal]))
+                    # Compute the discounted reward
+                    r_d = 0
+                    discount = 1
+                    for i in range(args.k):
+                        r_d = popped_sars[2] * discount
+                        discount *= args.gamma
 
-            if terminal or global_step > args.num_steps:
-                break
+                    # Add the SARS to the batch
+                    add_sars_to_batch(popped_sars, r_d)
+
+                buff.append((start_state, action, reward, terminal))
+            else:
+                if args.render:
+                    env.render()
+
+                if args.train:
+                    # Convert the batch dict to numpy arrays
+                    states = np.array(batch['state'])
+                    actions = np.array(batch['action'])
+                    rewards = np.array(batch['reward'])
+                    terminas = np.array(batch['terminal'])
+
+                    # TODO 1. check on the shape of states
+                    # TODO 2. do we need next states somewhere (might be related to 1.)
+                    global_step = agent.train_step(np.expand_dims(states, axis=0),
+                                                   actions,
+                                                   rewards,
+                                                   terminals)
+
+                    # Reset the batch
+                    reset_batch()
+
+                if terminal or global_step > args.num_steps:
+                    break
+
 
         if global_step > args.num_steps:
             break
