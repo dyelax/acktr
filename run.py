@@ -8,7 +8,6 @@ from acktr_model import ACKTRModel
 import collections
 import constants as c
 
-
 batch = {}
 
 def add_sars_to_batch(sars, r_d):
@@ -16,7 +15,8 @@ def add_sars_to_batch(sars, r_d):
     batch['state'].append(sars[0])
     batch['action'].append(sars[1])
     batch['reward'].append(r_d)
-    batch['terminal'].append(sars[3])
+    batch['next_state'].append(sars[3])
+    batch['terminal'].append(sars[4])
 
 def reset_batch():
     global batch
@@ -24,6 +24,7 @@ def reset_batch():
         'state': [],
         'action': [],
         'reward': [],
+        'next_state': [],
         'terminal': []
     }
 
@@ -70,7 +71,7 @@ def run(args):
                     # Add the SARS to the batch
                     add_sars_to_batch(popped_sars, r_d)
 
-                buff.append((start_state, action, reward, terminal))
+                buff.append((start_state, action, reward, state, terminal))
             else:
                 if args.render:
                     env.render()
@@ -80,6 +81,7 @@ def run(args):
                     states = np.array(batch['state'])
                     actions = np.array(batch['action'])
                     rewards = np.array(batch['reward'])
+                    next_states = np.array(batch['next_state'])
                     terminals = np.array(batch['terminal'])
 
                     # TODO 1. check on the shape of states
@@ -87,6 +89,7 @@ def run(args):
                     global_step = agent.train_step(states,
                                                    actions,
                                                    rewards,
+                                                   next_states,
                                                    terminals)
 
                     # Reset the batch
