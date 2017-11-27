@@ -1,11 +1,13 @@
 import gym
 import argparse
 import random
-
+import csv
+import json
 from datetime import datetime
 from os.path import join, exists
 from os import makedirs, environ
 from sys import maxint
+from glob import glob
 
 from atari_wrapper import make_atari, wrap_deepmind
 from monitor import Monitor
@@ -139,6 +141,41 @@ def get_env(env_name, results_save_dir, seed):
 
     return env
 
+
+#
+# Monitor
+#
+
+def transform_monitor(dir, env):
+    """
+    Transform the new monitor format to be compatible with Baselines monitor
+    format used in plot.py and write to disk.
+
+    :param dir: The directory of the monitor files.
+    :param env: The gym environment the monitor was tracking.
+    """
+    json_path = glob(join(dir, '*.stats.json'))[0]
+    with open(join(dir, '0.monitor.csv'), 'wb') as csv_file:
+        writer = csv.writer(csv_file)
+        with open(json_path, 'rb') as json_file:
+            blob = json.load(json_file)
+            initial_timestamp = blob['initial_reset_timestamp']
+
+            # Do a normal write for the comment line to avoid weird quoting
+            comment = '#{"env_id": "%s", "gym_version": "0.9.4", "t_start": %f}\n' \
+                       % (env, initial_timestamp)
+            csv_file.write(comment)
+
+            header = ['r', 'l', 't']
+            writer.writerow(header)
+
+            rows = zip(
+                blob['episode_rewards'],
+                blob['episode_lengths'],
+                [time - initial_timestamp for time in blob['timestamps']]
+            )
+
+            writer.writerows(rows)
 
 #
 # Misc

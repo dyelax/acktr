@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from utils import get_env, parse_args
+from utils import get_env, parse_args, transform_monitor
 
 from random_agent import RandomAgent
 from acktr_model import ACKTRModel
@@ -13,7 +13,8 @@ def run(args):
 
     sess = tf.Session()
     # TODO: Switch to ACKTR model
-    agent = ACKTRModel(sess, args, env.action_space.n)
+    # agent = ACKTRModel(sess, args, env.action_space.n)
+    agent = RandomAgent(sess, args, env.action_space.n)
     sess.run(tf.global_variables_initializer())
 
     global_step = 0
@@ -46,6 +47,10 @@ def run(args):
 
     # Close the env and write monitor results to disk
     env.close()
+
+    # The monitor won't be transformed if this script is killed early. In the
+    # case that it is, run transform_monitor.py independently.
+    transform_monitor(args.results_dir, args.env)
 
 
 if __name__ == '__main__':
