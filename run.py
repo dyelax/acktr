@@ -13,12 +13,12 @@ NULL_STATE = np.zeros((c.IN_WIDTH, c.IN_HEIGHT, c.IN_CHANNELS))
 
 batch = {}
 
-def add_sars_to_batch(sars, r_d, next_state):
+def add_sars_to_batch(state, action, r_d, next_state, terminal=False):
     global batch
-    batch['state'].append(sars[0])
-    batch['action'].append(sars[1])
+    batch['state'].append(state)
+    batch['action'].append(action)
     batch['reward'].append(r_d)
-    batch['terminal'].append(sars[3])
+    batch['terminal'].append(terminal)
     batch['next_state'].append(next_state)
 
 def reset_batch():
@@ -50,7 +50,9 @@ def run(args):
     for ep in xrange(args.num_eps):
         print 'Episode: ', ep
 
-        buff = collections.deque(maxlen=args.k)
+        LOOK_AHEAD_BUFF_SIZE = LOOK_AHEAD_BUFF_SIZE + 1
+
+        look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
         reset_batch()
 
         state = env.reset()
@@ -65,18 +67,30 @@ def run(args):
                 state, reward, terminal, _ = env.step(action)
 
                  # The SARS queue is full so the first item will be popped off
-                if len(buff) == args.k:
-                    popped_sars = buff[0]
+                if len(look_ahead_buff) == LOOK_AHEAD_BUFF_SIZE:
+                    popped_sars = look_ahead_buff[0]
 
                     # Compute the discounted reward
                     r_d = 0
-                    for i in range(args.k):
-                        r_d += buff[i][2] * args.gamma**i
+                    for i in xrange(LOOK_AHEAD_BUFF_SIZE):
+                        r_d += look_ahead_buff[i][2] * args.gamma**i
 
                     # Add the SARS to the batch
-                    add_sars_to_batch(popped_sars, r_d, buff[-1][0])
+                    print popped_sars[0], popped_sars[1], r_d, look_ahead_buff[-1][0]
+                    add_sars_to_batch(popped_sars[0], popped_sars[1], r_d, look_ahead_buff[-1][0])
 
-                buff.append((start_state, action, reward, terminal))
+                    # Add the state to the look_ahead_buff
+                    look_ahead_buff.append((start_state, action, reward))
+
+                    if terminal:
+                        for i in xrange(LOOK_AHEAD_BUFF_SIZE):
+                            for j in xrange(i, LOOK_AHEAD_BUFF_SIZE - i):
+                                r_d += look_ahead_buff[j][2] * args.gamma**j
+                            add_sars_to_batch(look_ahead_buff[j][0], look_ahead_buff[j[1], r_d, NULL_STATE, terminal=True)
+                        look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
+                else:
+                    # Add the state to the look_ahead_buff
+                    look_ahead_buff.append((start_state, action, reward))
 
                 ep_reward += reward
             else:
