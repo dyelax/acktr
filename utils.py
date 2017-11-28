@@ -70,15 +70,18 @@ def parse_args():
     # Paths
     parser.add_argument('--results_dir',
                         help='Output directory for results',
-                        default=join('save', 'results', 'ours', 'pong', date))
+                        # default=join('save', 'results', 'ours', 'pong', date))
+                        default=join('save', 'results', 'ours', 'breakout', date))
     parser.add_argument('--model_save_path',
                         help='Output directory for models',
-                        default=join('save', 'models', date, 'model'))
+                        # default=join('save', 'models', 'pong', date, 'model'))
+                        default=join('save', 'models', 'breakout', date, 'model'))
     parser.add_argument('--model_load_dir',
                         help='Directory of the model you want to load.')
     parser.add_argument('--summary_dir',
                         help='Output directory for summaries',
-                        default=join('save', 'summaries', date))
+                        # default=join('save', 'summaries', 'pong', date))
+                        default=join('save', 'summaries', 'breakout', date))
 
     # Hyperparameters
     parser.add_argument('--batch_size',
