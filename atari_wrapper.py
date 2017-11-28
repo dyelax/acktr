@@ -85,7 +85,8 @@ class EpisodicLifeEnv(gym.Wrapper):
             # no-op step to advance from terminal/lost life state
             obs, _, _, _ = self.env.step(0)
         self.lives = self.env.unwrapped.ale.lives()
-        return obs
+
+        return obs, self.was_real_done
 
 
 class MaxAndSkipEnv(gym.Wrapper):
@@ -202,8 +203,6 @@ def make_atari(env_id):
 def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
     """Configure environment for DeepMind-style Atari.
     """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
@@ -214,5 +213,8 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
         env = FrameStack(env, c.IN_CHANNELS)
     if scale:
         env = ScaledFloatFrame(env)
+
+    if episode_life:
+        env = EpisodicLifeEnv(env)
     return env
 

@@ -43,26 +43,28 @@ def run(args):
     # agent = RandomAgent(sess, args, env.action_space.n)
     sess.run(tf.global_variables_initializer())
 
+    num_eps = 0
     env_steps = 0
     global_step = 0
+    reset_batch()
 
     print '-' * 30
-    for ep in xrange(args.num_eps):
-        print 'Episode: ', ep
-
+    while num_eps < args.num_eps:
         LOOK_AHEAD_BUFF_SIZE = args.k + 1
 
         look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
-        reset_batch()
 
-        state = env.reset()
+        state, real_terminal = env.reset()
         terminal = False
 
-        # TODO: Fix this resetting on fake "life loss" terminals
-        ep_reward = 0
+        if real_terminal:
+            ep_reward = 0
 
         while True:
-            # Fill up the batch until it is full or we reach a terminal state
+            if args.render:
+                env.render()
+
+            # Fill up the batch
             if len(batch['action']) < args.batch_size:
                 start_state = state
                 action = agent.get_action(np.expand_dims(state, axis=0))
@@ -103,9 +105,6 @@ def run(args):
                     look_ahead_buff.append((start_state, action, reward))
 
             else:
-                if args.render:
-                    env.render()
-
                 if args.train:
                     # Convert the batch dict to numpy arrays
                     states = np.array(batch['state'])
@@ -134,11 +133,15 @@ def run(args):
 
             env_steps += 1
 
-        agent.write_ep_reward_summary(ep_reward, env_steps)
-        print 'Train steps:    ', global_step
-        print 'Env steps:      ', env_steps
-        print 'Episode reward: ', ep_reward
-        print '-' * 30
+        if real_terminal:
+            agent.write_ep_reward_summary(ep_reward, env_steps)
+            print 'Episode:        ', num_eps
+            print 'Train steps:    ', global_step
+            print 'Env steps:      ', env_steps
+            print 'Episode reward: ', ep_reward
+            print '-' * 30
+
+            num_eps += 1
 
         if env_steps > args.num_steps:
             break
