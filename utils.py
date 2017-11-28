@@ -55,7 +55,7 @@ def parse_args():
                         type=int)
     parser.add_argument('--num_steps',
                         help='Max number of steps to run',
-                        default=maxint,
+                        default=10e6,
                         type=int)
 
     # Paths

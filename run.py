@@ -9,15 +9,17 @@ import collections
 import constants as c
 
 
+NULL_STATE = np.zeros((c.IN_WIDTH, c.IN_HEIGHT, c.IN_CHANNELS))
+
 batch = {}
 
-def add_sars_to_batch(sars, r_d):
+def add_sars_to_batch(sars, r_d, next_state):
     global batch
     batch['state'].append(sars[0])
     batch['action'].append(sars[1])
     batch['reward'].append(r_d)
-    batch['next_state'].append(sars[3])
-    batch['terminal'].append(sars[4])
+    batch['terminal'].append(sars[3])
+    batch['next_state'].append(next_state)
 
 def reset_batch():
     global batch
@@ -57,7 +59,7 @@ def run(args):
 
         while True:
             # Fill up the batch until it is full or we reach a terminal state
-            if len(batch['action']) < args.batch_size and not terminal:
+            if len(batch['action']) < args.batch_size:
                 start_state = state
                 action = agent.get_action(np.expand_dims(state, axis=0))
                 state, reward, terminal, _ = env.step(action)
@@ -72,9 +74,9 @@ def run(args):
                         r_d += buff[i][2] * args.gamma**i
 
                     # Add the SARS to the batch
-                    add_sars_to_batch(popped_sars, r_d)
+                    add_sars_to_batch(popped_sars, r_d, buff[-1][0])
 
-                buff.append((start_state, action, reward, state, terminal))
+                buff.append((start_state, action, reward, terminal))
 
                 ep_reward += reward
             else:
