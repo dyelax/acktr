@@ -136,6 +136,9 @@ def run(args):
                                                    terminals,
                                                    env_steps)
 
+                    if global_step % 10 == 0:
+                        print 'Train step ', global_step
+
                     # Reset the batch
                     reset_batch()
 
