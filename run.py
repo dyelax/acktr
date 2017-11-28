@@ -67,6 +67,7 @@ def run(args):
                 start_state = state
                 action = agent.get_action(np.expand_dims(state, axis=0))
                 state, reward, terminal, _ = env.step(action)
+                ep_reward += reward
 
                  # The SARS queue is full so the first item will be popped off
                 if len(look_ahead_buff) == LOOK_AHEAD_BUFF_SIZE:
@@ -101,7 +102,6 @@ def run(args):
                     # Add the state to the look_ahead_buff
                     look_ahead_buff.append((start_state, action, reward))
 
-                ep_reward += reward
             else:
                 if args.render:
                     env.render()
