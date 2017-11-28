@@ -95,7 +95,8 @@ def run(args):
                                                    actions,
                                                    rewards,
                                                    next_states,
-                                                   terminals)
+                                                   terminals,
+                                                   env_steps)
 
                     # Reset the batch
                     reset_batch()

@@ -104,8 +104,9 @@ class ACKTRModel:
         self.ep_reward_summary = tf.summary.scalar("episode_reward", self.ep_reward)
 
 
-    def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch):
-        k = self.args.k #the k from k-step return
+    def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch, env_steps):
+        percent_done = env_steps / self.args.num_steps
+
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
         v_s_next = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_next_batch})
         v_s_next *= terminal_batch #mask out preds for terminal states
@@ -116,7 +117,7 @@ class ACKTRModel:
         feed_dict = {self.x_batch: s_batch, 
                     self.r_labels: label_batch,
                     self.actions_taken: a_batch,
-                    self.learning_rate: self.args.lr / (global_step + 1)}
+                    self.learning_rate: self.args.lr * (1 - percent_done)}
         step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
         if step % c.SAVE_FREQ == 0:
