@@ -105,7 +105,7 @@ class ACKTRModel:
 
 
     def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch, env_steps):
-        percent_done = env_steps / self.args.num_steps
+        percent_done = float(env_steps) / self.args.num_steps
 
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
         v_s_next = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_next_batch})
