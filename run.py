@@ -46,6 +46,7 @@ def run(args):
     num_eps = 0
     env_steps = 0
     global_step = 0
+    ep_reward = 0
     reset_batch()
 
     print '-' * 30
@@ -54,10 +55,19 @@ def run(args):
 
         look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
 
-        state, real_terminal = env.reset()
+        state, was_real_terminal = env.reset()
         terminal = False
 
-        if real_terminal:
+        if was_real_terminal:
+            agent.write_ep_reward_summary(ep_reward, env_steps)
+            print 'Episode:        ', num_eps
+            print 'Train steps:    ', global_step
+            print 'Env steps:      ', env_steps
+            print 'Episode reward: ', ep_reward
+            print '-' * 30
+
+            num_eps += 1
+
             ep_reward = 0
 
         while True:
@@ -97,9 +107,6 @@ def run(args):
                                               r_d,
                                               NULL_STATE,
                                               terminal=True)
-
-                        # print 'TERMINAL'
-                        break
                 else:
                     # Add the state to the look_ahead_buff
                     look_ahead_buff.append((start_state, action, reward))
@@ -128,22 +135,12 @@ def run(args):
                     # Reset the batch
                     reset_batch()
 
-                if terminal or env_steps > args.num_steps:
-                    break
+            if terminal:
+                break
 
             env_steps += 1
 
-        if real_terminal:
-            agent.write_ep_reward_summary(ep_reward, env_steps)
-            print 'Episode:        ', num_eps
-            print 'Train steps:    ', global_step
-            print 'Env steps:      ', env_steps
-            print 'Episode reward: ', ep_reward
-            print '-' * 30
-
-            num_eps += 1
-
-        if env_steps > args.num_steps:
+        if env_steps > args.num_steps * 1.1:
             break
 
     # Close the env and write monitor results to disk
