@@ -40,6 +40,7 @@ class ACKTRModel:
 
     def define_graph(self):
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        self.learning_rate = tf.placeholder(dtype=tf.float32)
         self.x_batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
         self.actions_taken = tf.placeholder(dtype=tf.int32, shape=[None])
         self.r_labels = tf.placeholder(dtype=tf.float32, shape=[None])
@@ -89,7 +90,7 @@ class ACKTRModel:
 
         self.total_loss = self.actor_loss + self.critic_loss + c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
 
-        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.args.lr,
+        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
             cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
             layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
 
@@ -114,7 +115,8 @@ class ACKTRModel:
         sess_args = [self.global_step, self.a_loss_summary, self.c_loss_summary, self.train_op]
         feed_dict = {self.x_batch: s_batch, 
                     self.r_labels: label_batch,
-                    self.actions_taken: a_batch}
+                    self.actions_taken: a_batch,
+                    self.learning_rate: self.args.lr / (global_step + 1)}
         step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
         if step % c.SAVE_FREQ == 0:
