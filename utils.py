@@ -31,7 +31,8 @@ def parse_args():
     # General
     parser.add_argument('--env',
                         help='Gym environment name',
-                        default='PongNoFrameskip-v4')
+                        # default='PongNoFrameskip-v4')
+                        default='BreakoutNoFrameskip-v4')
     parser.add_argument('--gpu',
                         help='comma separated list of GPU(s) to use.',
                         default='0')
