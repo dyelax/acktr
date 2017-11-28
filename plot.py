@@ -9,7 +9,7 @@ matplotlib.use('TkAgg') # Can change to 'Agg' for non-interactive mode
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 
-from baselines.bench.monitor import load_results
+from monitor import load_results
 
 EPISODES_WINDOW = 10
 COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
@@ -110,9 +110,9 @@ def main():
     plt.xlabel("Timesteps")
     plt.ylabel("Episode Rewards")
 
-    ours_dirs = []
-    for dir in args.ours_dirs: ours_dirs += glob(dir)
-    plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)')
+    # ours_dirs = []
+    # for dir in args.ours_dirs: ours_dirs += glob(dir)
+    # plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)')
 
     acktr_dirs = []
     for dir in args.acktr_dirs: acktr_dirs += glob(dir)
