@@ -120,9 +120,11 @@ class ACKTRModel:
                     self.learning_rate: self.args.lr * (1 - percent_done)}
         step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
-        if step % c.SAVE_FREQ == 0:
+        if (step - 1) % self.args.summary_save_freq == 0:
             self.summary_writer.add_summary(a_summary, global_step=step)
             self.summary_writer.add_summary(c_summary, global_step=step)
+
+        if (step - 1) % self.args.model_save_freq == 0:
             self.saver.save(self.sess, self.args.model_save_path, global_step=step)
 
         return step

@@ -58,6 +58,14 @@ def parse_args():
                         help='Max number of steps to run',
                         default=10e6,
                         type=int)
+    parser.add_argument('--summary_save_freq',
+                        help='Frequency to save TensorBoard summaries (in steps)',
+                        default=100,
+                        type=int)
+    parser.add_argument('--model_save_freq',
+                        help='Frequency to save the model (in steps',
+                        default=1000,
+                        type=int)
 
     # Paths
     parser.add_argument('--results_dir',
