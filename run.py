@@ -1,12 +1,13 @@
 import tensorflow as tf
 import numpy as np
 
-from utils import get_env, parse_args, transform_monitor
+from utils import get_env, parse_args, transform_monitor, show_state
 
 from random_agent import RandomAgent
 from acktr_model import ACKTRModel
 import collections
 import constants as c
+
 
 batch = {}
 
@@ -60,6 +61,8 @@ def run(args):
                 start_state = state
                 action = agent.get_action(np.expand_dims(state, axis=0))
                 state, reward, terminal, _ = env.step(action)
+
+                # if env_steps > 10: show_state(state)
 
                 # The SARS queue is full so the first item will be popped off
                 if len(buff) == args.k:

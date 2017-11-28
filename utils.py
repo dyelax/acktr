@@ -8,6 +8,7 @@ from os.path import join, exists
 from os import makedirs, environ
 from sys import maxint
 from glob import glob
+from matplotlib import pyplot as plt
 
 from atari_wrapper import make_atari, wrap_deepmind
 from monitor import Monitor
@@ -200,3 +201,29 @@ def date_str():
     """
     # [:-7] cuts off microseconds.
     return str(datetime.now()).replace(' ', '.')[:-7]
+
+
+#
+#
+#
+
+def show_state(s):
+    """
+    Displays the state for debugging purposes.
+
+    :param s: The state (An array of stacked grayscale images).
+    """
+    print s.shape
+    print s[:,:,0].shape
+    print s[:,:,0]
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2, 2, 1)
+    ax1.imshow(s[:,:,0], cmap='gray')
+    ax2 = fig.add_subplot(2, 2, 2)
+    ax2.imshow(s[:,:,1], cmap='gray')
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax3.imshow(s[:,:,2], cmap='gray')
+    ax4 = fig.add_subplot(2, 2, 4)
+    ax4.imshow(s[:,:,3], cmap='gray')
+    plt.show()
