@@ -50,13 +50,15 @@ def run(args):
     for ep in xrange(args.num_eps):
         print 'Episode: ', ep
 
-        LOOK_AHEAD_BUFF_SIZE = LOOK_AHEAD_BUFF_SIZE + 1
+        LOOK_AHEAD_BUFF_SIZE = args.k + 1
 
         look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
         reset_batch()
 
         state = env.reset()
         terminal = False
+
+        # TODO: Fix this resetting on fake "life loss" terminals
         ep_reward = 0
 
         while True:
@@ -76,7 +78,7 @@ def run(args):
                         r_d += look_ahead_buff[i][2] * args.gamma**i
 
                     # Add the SARS to the batch
-                    print popped_sars[0], popped_sars[1], r_d, look_ahead_buff[-1][0]
+                    # print popped_sars[1], r_d
                     add_sars_to_batch(popped_sars[0], popped_sars[1], r_d, look_ahead_buff[-1][0])
 
                     # Add the state to the look_ahead_buff
@@ -86,8 +88,15 @@ def run(args):
                         for i in xrange(LOOK_AHEAD_BUFF_SIZE):
                             for j in xrange(i, LOOK_AHEAD_BUFF_SIZE - i):
                                 r_d += look_ahead_buff[j][2] * args.gamma**j
-                            add_sars_to_batch(look_ahead_buff[j][0], look_ahead_buff[j[1], r_d, NULL_STATE, terminal=True)
-                        look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
+
+                            add_sars_to_batch(look_ahead_buff[j][0],
+                                              look_ahead_buff[j][1],
+                                              r_d,
+                                              NULL_STATE,
+                                              terminal=True)
+
+                        # print 'TERMINAL'
+                        break
                 else:
                     # Add the state to the look_ahead_buff
                     look_ahead_buff.append((start_state, action, reward))

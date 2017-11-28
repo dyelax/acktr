@@ -50,7 +50,7 @@ class FireResetEnv(gym.Wrapper):
             self.env.reset(**kwargs)
         return obs
 
-
+# TODO: Does this not work for Pong? (no "lives")
 class EpisodicLifeEnv(gym.Wrapper):
     def __init__(self, env):
         """Make end-of-life == end-of-episode, but only reset on true game over.
