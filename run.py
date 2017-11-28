@@ -62,9 +62,7 @@ def run(args):
                 action = agent.get_action(np.expand_dims(state, axis=0))
                 state, reward, terminal, _ = env.step(action)
 
-                # if env_steps > 10: show_state(state)
-
-                # The SARS queue is full so the first item will be popped off
+                 # The SARS queue is full so the first item will be popped off
                 if len(buff) == args.k:
                     popped_sars = buff[0]
 
@@ -90,6 +88,11 @@ def run(args):
                     rewards = np.array(batch['reward'])
                     next_states = np.array(batch['next_state'])
                     terminals = np.array(batch['terminal'])
+
+                    # Visualize 3 random states from the batch
+                    # for i in xrange(3):
+                    #     i = np.random.choice(len(states))
+                    #     show_state(states[i])
 
                     global_step = agent.train_step(states,
                                                    actions,
