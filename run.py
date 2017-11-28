@@ -59,16 +59,20 @@ def run(args):
         terminal = False
 
         if was_real_terminal:
-            agent.write_ep_reward_summary(ep_reward, env_steps)
+            print 'Terminal'
+            print '-' * 30
             print 'Episode:        ', num_eps
             print 'Train steps:    ', global_step
             print 'Env steps:      ', env_steps
             print 'Episode reward: ', ep_reward
             print '-' * 30
 
-            num_eps += 1
+            agent.write_ep_reward_summary(ep_reward, env_steps)
 
+            num_eps += 1
             ep_reward = 0
+        else:
+            print 'Death'
 
         while True:
             if args.render:
