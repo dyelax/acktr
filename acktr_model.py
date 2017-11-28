@@ -99,6 +99,9 @@ class ACKTRModel:
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
         self.c_loss_summary = tf.summary.scalar("critic_loss", self.critic_loss)
 
+        self.ep_reward = tf.placeholder(tf.float32)
+        self.ep_reward_summary = tf.summary.scalar("episode_reward", self.ep_reward)
+
 
     def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch):
         k = self.args.k #the k from k-step return
@@ -119,6 +122,8 @@ class ACKTRModel:
             self.summary_writer.add_summary(c_summary, global_step=step)
             self.saver.save(self.sess, self.args.model_save_path, global_step=step)
 
+        return step
+
 
     # TODO later: increase temp of softmax over time?
     def get_action(self, state):
@@ -129,4 +134,12 @@ class ACKTRModel:
         policy_probs = self.sess.run(self.policy_probs, feed_dict=feed_dict)
         policy_probs = np.squeeze(policy_probs)
         return np.random.choice(len(policy_probs), p=policy_probs)
+
+
+    def write_ep_reward_summary(self, ep_reward, steps):
+        summary = self.sess.run(self.ep_reward_summary,
+                                feed_dict={self.ep_reward: ep_reward})
+
+        self.summary_writer.add_summary(summary, global_step=steps)
+
 

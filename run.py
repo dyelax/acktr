@@ -36,21 +36,23 @@ def run(args):
                   seed=args.seed)
 
     sess = tf.Session()
-    # TODO: Switch to ACKTR model
     agent = ACKTRModel(sess, args, env.action_space.n)
     # agent = RandomAgent(sess, args, env.action_space.n)
     sess.run(tf.global_variables_initializer())
 
+    env_steps = 0
     global_step = 0
+
+    print '-' * 30
     for ep in xrange(args.num_eps):
-        print '-' * 30
         print 'Episode: ', ep
-        print '-' * 30
+
+        buff = collections.deque(maxlen=args.k)
+        reset_batch()
 
         state = env.reset()
-
-        buff = collections.deque(args.k)
-        reset_batch()
+        terminal = False
+        ep_reward = 0
 
         while True:
             # Fill up the batch until it is full or we reach a terminal state
@@ -72,6 +74,8 @@ def run(args):
                     add_sars_to_batch(popped_sars, r_d)
 
                 buff.append((start_state, action, reward, state, terminal))
+
+                ep_reward += reward
             else:
                 if args.render:
                     env.render()
@@ -84,8 +88,6 @@ def run(args):
                     next_states = np.array(batch['next_state'])
                     terminals = np.array(batch['terminal'])
 
-                    # TODO 1. check on the shape of states
-                    # TODO 2. do we need next states somewhere (might be related to 1.)
                     global_step = agent.train_step(states,
                                                    actions,
                                                    rewards,
@@ -95,11 +97,18 @@ def run(args):
                     # Reset the batch
                     reset_batch()
 
-                if terminal or global_step > args.num_steps:
+                if terminal or env_steps > args.num_steps:
                     break
 
+            env_steps += 1
 
-        if global_step > args.num_steps:
+        agent.write_ep_reward_summary(ep_reward, env_steps)
+        print 'Train steps:    ', global_step
+        print 'Env steps:      ', env_steps
+        print 'Episode reward: ', ep_reward
+        print '-' * 30
+
+        if env_steps > args.num_steps:
             break
 
     # Close the env and write monitor results to disk
