@@ -75,23 +75,23 @@ def main():
     parser.add_argument('--ours_dirs',
                         help='List of log directories for our ACKTR implementation',
                         nargs = '*',
-                        # default=['./save/results/ours/pong/*'])
-                        default=['./save/results/ours/breakout/*'])
+                        default=['./save/results/ours/pong/*'])
+                        # default=['./save/results/ours/breakout/*'])
     parser.add_argument('--acktr_dirs',
                         help='List of log directories for the OpenAI Baselines ACKTR implementation',
                         nargs = '*',
-                        # default=['./save/results/baselines/pong/acktr/*'])
-                        default=['./save/results/baselines/breakout/acktr/*'])
+                        default=['./save/results/baselines/pong/acktr/*'])
+                        # default=['./save/results/baselines/breakout/acktr/*'])
     parser.add_argument('--trpo_dirs',
                         help='List of log directories for the OpenAI Baselines TRPO implementation',
                         nargs = '*',
-                        # default=['./save/results/baselines/pong/trpo/*'])
-                        default=['./save/results/baselines/breakout/trpo/*'])
+                        default=['./save/results/baselines/pong/trpo/*'])
+                        # default=['./save/results/baselines/breakout/trpo/*'])
     parser.add_argument('--a2c_dirs',
                         help='List of log directories for the OpenAI Baselines A2C implementation',
                         nargs = '*',
-                        # default=['./save/results/baselines/pong/a2c/*'])
-                        default=['./save/results/baselines/breakout/a2c/*'])
+                        default=['./save/results/baselines/pong/a2c/*'])
+                        # default=['./save/results/baselines/breakout/a2c/*'])
     parser.add_argument('--ours_color',
                         help='The color with which to plot our ACKTR results',
                         default='magenta')
