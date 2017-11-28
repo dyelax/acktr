@@ -157,7 +157,7 @@ def get_env(env_name, results_save_dir, seed):
 
     if results_save_dir:
         env = gym.wrappers.Monitor(env, results_save_dir,
-                                   video_callable=should_save_vid())
+                                   video_callable=should_save_vid)
         # env = Monitor(env, join(get_dir(results_save_dir), '0'))
 
     env = wrap_deepmind(env, frame_stack=True, scale=True)
