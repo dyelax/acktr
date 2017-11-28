@@ -104,7 +104,7 @@ class ACKTRModel:
         k = self.args.k #the k from k-step return
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
         v_s_next = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_next_batch})
-        v_s_next *= terminal_batch #mask out preds for termainl states
+        v_s_next *= terminal_batch #mask out preds for terminal states
         label_batch = (r_batch + v_s_next * (self.args.gamma ** self.args.k)) - v_s
         label_batch = np.squeeze(label_batch.transpose())
 
