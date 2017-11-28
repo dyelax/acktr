@@ -141,7 +141,7 @@ def should_save_vid(ep_i):
     :param ep_i: The episode index
     """
     # print 'VID INDEX: ', ep_i
-    # return  ep_i > 50 and ep_i % 2 == 0
+    return  ep_i > 75 and ep_i % 2 == 0
 
 def get_env(env_name, results_save_dir, seed):
     """
@@ -157,7 +157,7 @@ def get_env(env_name, results_save_dir, seed):
 
     if results_save_dir:
         env = gym.wrappers.Monitor(env, results_save_dir,
-                                   video_callable=None)
+                                   video_callable=should_save_vid())
         # env = Monitor(env, join(get_dir(results_save_dir), '0'))
 
     env = wrap_deepmind(env, frame_stack=True, scale=True)
