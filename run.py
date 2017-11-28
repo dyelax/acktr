@@ -36,7 +36,6 @@ def run(args):
                   seed=args.seed)
 
     sess = tf.Session()
-    # TODO: Switch to ACKTR model
     agent = ACKTRModel(sess, args, env.action_space.n)
     # agent = RandomAgent(sess, args, env.action_space.n)
     sess.run(tf.global_variables_initializer())
