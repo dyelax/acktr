@@ -59,6 +59,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self.lives = 0
         self.was_real_done  = True
+        self.was_real_done_last_reset = True
 
     def _step(self, action):
         obs, reward, done, info = self.env.step(action)
@@ -86,7 +87,9 @@ class EpisodicLifeEnv(gym.Wrapper):
             obs, _, _, _ = self.env.step(0)
         self.lives = self.env.unwrapped.ale.lives()
 
-        return obs, self.was_real_done
+        self.was_real_done_last_reset = self.was_real_done
+
+        return obs
 
 
 class MaxAndSkipEnv(gym.Wrapper):

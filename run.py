@@ -8,6 +8,8 @@ from acktr_model import ACKTRModel
 import collections
 import constants as c
 
+from atari_wrapper import EpisodicLifeEnv
+
 
 NULL_STATE = np.zeros((c.IN_WIDTH, c.IN_HEIGHT, c.IN_CHANNELS))
 
@@ -31,6 +33,16 @@ def reset_batch():
         'terminal': []
     }
 
+def get_episodic_life_env(env):
+    try:
+        while not isinstance(env, EpisodicLifeEnv):
+            env = env.env
+    except AttributeError:
+        'No episodic life wrapper for env.'
+
+    return env
+
+
 def run(args):
     global batch
 
@@ -38,6 +50,7 @@ def run(args):
                   results_save_dir=args.results_dir,
                   seed=args.seed)
 
+    print
     sess = tf.Session()
     agent = ACKTRModel(sess, args, env.action_space.n)
     # agent = RandomAgent(sess, args, env.action_space.n)
@@ -57,25 +70,22 @@ def run(args):
 
         state = env.reset()
         terminal = False
-        # print env.was_real_done
 
-        # if was_real_terminal:
-        #     print 'Terminal'
-        #     print '-' * 30
-        #     print 'Episode:        ', num_eps
-        #     print 'Train steps:    ', global_step
-        #     print 'Env steps:      ', env_steps
-        #     print 'Episode reward: ', ep_reward
-        #     print '-' * 30
-        #
-        #     agent.write_ep_reward_summary(ep_reward, env_steps)
-        #
-        #     num_eps += 1
-        #     ep_reward = 0
-        # else:
-        print 'Death'
-        print 'Env steps: ', env_steps
-        print '-' * 30
+        if get_episodic_life_env(env).was_real_done_last_reset:
+            print 'Terminal'
+            print '-' * 30
+            print 'Episode:        ', num_eps
+            print 'Train steps:    ', global_step
+            print 'Env steps:      ', env_steps
+            print 'Episode reward: ', ep_reward
+            print '-' * 30
+
+            agent.write_ep_reward_summary(ep_reward, env_steps)
+
+            num_eps += 1
+            ep_reward = 0
+        else:
+            print 'Death'
 
         while True:
             if args.render:
