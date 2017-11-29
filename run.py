@@ -57,7 +57,7 @@ def run(args):
 
         state = env.reset()
         terminal = False
-        print env.was_real_done
+        # print env.was_real_done
 
         # if was_real_terminal:
         #     print 'Terminal'
