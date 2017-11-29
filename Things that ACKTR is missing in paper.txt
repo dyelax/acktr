@@ -1,0 +1,6 @@
+Things that ACKTR is missing in paper:
+
+1. missing parthensis for k-step return
+2. activation is ReLU 
+3. sampling is not softmax sampling or eps-greedy, as in REINFORCE/A2C, but rather a weird noise additon with log(log(noise))
+4. mse is mse/2 (in addition to the 0.5* in the paper)
