@@ -73,7 +73,9 @@ def run(args):
         #     num_eps += 1
         #     ep_reward = 0
         # else:
-        #     print 'Death'
+        print 'Death'
+        print 'Env steps: ', env_steps
+        print '-' * 30
 
         while True:
             if args.render:
