@@ -55,24 +55,25 @@ def run(args):
 
         look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
 
-        state, was_real_terminal = env.reset()
+        state = env.reset()
         terminal = False
+        print env.was_real_done
 
-        if was_real_terminal:
-            print 'Terminal'
-            print '-' * 30
-            print 'Episode:        ', num_eps
-            print 'Train steps:    ', global_step
-            print 'Env steps:      ', env_steps
-            print 'Episode reward: ', ep_reward
-            print '-' * 30
-
-            agent.write_ep_reward_summary(ep_reward, env_steps)
-
-            num_eps += 1
-            ep_reward = 0
-        else:
-            print 'Death'
+        # if was_real_terminal:
+        #     print 'Terminal'
+        #     print '-' * 30
+        #     print 'Episode:        ', num_eps
+        #     print 'Train steps:    ', global_step
+        #     print 'Env steps:      ', env_steps
+        #     print 'Episode reward: ', ep_reward
+        #     print '-' * 30
+        #
+        #     agent.write_ep_reward_summary(ep_reward, env_steps)
+        #
+        #     num_eps += 1
+        #     ep_reward = 0
+        # else:
+        #     print 'Death'
 
         while True:
             if args.render:
