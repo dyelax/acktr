@@ -3,7 +3,6 @@ import glob
 import numpy as np
 import os
 import tensorflow as tf
-import utils
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -32,8 +31,8 @@ class ACKTRModel:
 
 
     def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer'):
-        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01), name=("%s/W" % name), seed=self.args.seed)
-        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01), name=("%s/b" % name), seed=self.args.seed)
+        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
+        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
         outputs = tf.matmul(inputs, w) + b
         self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
         return outputs
@@ -56,8 +55,8 @@ class ACKTRModel:
             in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
             kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
             w_shape = kernel_size + (in_channels, out_channels)
-            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01), name=("conv_%d/W" % i), seed=self.args.seed)
-            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01), name=("conv_%d/b" % i), seed=self.args.seed)
+            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i))
+            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
 
             cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b # TODO: padding?
             self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer, 
@@ -156,7 +155,7 @@ class ACKTRModel:
         feed_dict = {self.x_batch: state}
         policy_logits = self.sess.run(self.policy_logits, feed_dict=feed_dict)
         policy_logits = np.squeeze(policy_logits)
-        noise = np.random.rand(policy_logits.shape())
+        noise = np.random.rand(*policy_logits.shape)
         return np.argmax(policy_logits - np.log(-np.log(noise)))
 
     def write_ep_reward_summary(self, ep_reward, steps):
@@ -165,9 +164,18 @@ class ACKTRModel:
 
         self.summary_writer.add_summary(summary, global_step=steps)
 
+from utils import parse_args
 
 if __name__ == '__main__':
+    num_actions = 5
     sess = tf.Session()
-    args = utils.arg_parser().parse_args()
-    model = ACKTRModel(sess, args, 5)
-    print(model.get_action_softmax(np.random.rand(1,42,42,6))
+    args = parse_args()
+    model = ACKTRModel(sess, args, num_actions)
+    batch_size = 10
+    model.train_step(np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
+                        np.random.randint(num_actions, size=batch_size),
+                        np.random.rand(batch_size),
+                        np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
+                        np.random.randint(2, size=batch_size),
+                        1)
+    print(model.get_action(np.random.rand(1,84,84,4)))
