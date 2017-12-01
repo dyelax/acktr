@@ -89,12 +89,13 @@ class ACKTRModel:
             #probs_of_actions_taken = tf.reduce_sum(self.policy_probs * tf.one_hot(self.actions_taken, depth=self.num_actions), axis=1)
             #self.actor_loss = -tf.reduce_mean(tf.log(probs_of_actions_taken) * self.actor_labels)
         self.actor_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken) * self.actor_labels)
-        self.critic_loss = 0.5 * tf.reduce_mean(tf.square(self.critic_labels - self.value_preds))/2.0
-        #TODO: impleent more stable version that they do in code
+        self.critic_loss = tf.reduce_mean(tf.square(self.critic_labels - self.value_preds)) / 2.0
+        
+        #TODO: implement more stable version that they do in code
         self.entropy_regularization = tf.reduce_mean(self.calculate_entropy(self.policy_logits))
         self.actor_loss = self.actor_loss - c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
 
-        self.total_loss = self.actor_loss + self.critic_loss
+        self.total_loss = self.actor_loss + 0.5 * self.critic_loss
 
         optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
             cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
