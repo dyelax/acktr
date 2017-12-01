@@ -166,6 +166,32 @@ def get_env(env_name, results_save_dir, seed):
     return env
 
 
+# def get_env(env_name, results_save_dir, seed):
+#     """
+#     Initialize the OpenAI Gym environment.
+#
+#     :param env_name: The name of the gym environment to use, (e.g. 'Pong-v0')
+#     :param results_save_dir: Output directory for results.
+#     :param seed: The random seed.
+#
+#     :return: The initialized gym environment.
+#     """
+#     def make_env(rank):
+#         env = make_atari(env_name)
+#         env.seed(seed + rank)
+#
+#         if results_save_dir:
+#             # env = gym.wrappers.Monitor(env, join(results_save_dir, str(rank)),
+#             #                            video_callable=None)
+#             env = Monitor(env, join(get_dir(results_save_dir), str(rank)))
+#
+#         return wrap_deepmind(env)
+#
+#     env = SubprocVecEnv([make_env(i) for i in range(32)])
+#
+#
+#     return env
+
 #
 # Monitor
 #
