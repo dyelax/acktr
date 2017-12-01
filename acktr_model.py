@@ -91,9 +91,10 @@ class ACKTRModel:
         self.actor_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken) * self.actor_labels)
         self.critic_loss = 0.5 * tf.reduce_mean(tf.square(self.critic_labels - self.value_preds))/2.0
         #TODO: impleent more stable version that they do in code
-        self.entropy_regularization = tf.reduce_mean(tf.reduce_sum(self.policy_probs * -tf.log(self.policy_probs), axis=1))
+        self.entropy_regularization = tf.reduce_mean(self.calculate_entropy(self.policy_logits))
+        self.actor_loss = self.actor_loss - c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
 
-        self.total_loss = self.actor_loss + self.critic_loss + c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
+        self.total_loss = self.actor_loss + self.critic_loss
 
         optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
             cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
@@ -107,6 +108,13 @@ class ACKTRModel:
 
         self.ep_reward = tf.placeholder(tf.float32)
         self.ep_reward_summary = tf.summary.scalar("episode_reward", self.ep_reward)
+
+    def calculate_entropy(self, logits):
+        a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
+        ea0 = tf.exp(a0)
+        z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
+        p0 = ea0 / z0
+        return tf.reduce_sum(p0 * (tf.log(z0) - a0), axis=1)
 
 
     def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch, env_steps):
