@@ -94,7 +94,8 @@ def run(args):
             # Fill up the batch
             if len(batch['action']) < args.batch_size:
                 start_state = state
-                action = agent.get_action(np.expand_dims(state, axis=0))
+                # action = agent.get_action(np.expand_dims(state, axis=0))
+                action = agent.get_action_softmax(np.expand_dims(state, axis=0))
                 state, reward, terminal, _ = env.step(action)
                 ep_reward += reward
 
