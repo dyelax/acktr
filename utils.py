@@ -31,8 +31,8 @@ def parse_args():
     # General
     parser.add_argument('--env',
                         help='Gym environment name',
-                        # default='PongNoFrameskip-v4')
-                        default='BreakoutNoFrameskip-v4')
+                        default='PongNoFrameskip-v4')
+                        # default='BreakoutNoFrameskip-v4')
     parser.add_argument('--gpu',
                         help='comma separated list of GPU(s) to use.',
                         default='0')
@@ -70,18 +70,18 @@ def parse_args():
     # Paths
     parser.add_argument('--results_dir',
                         help='Output directory for results',
-                        # default=join('save', 'results', 'ours', 'pong', date))
-                        default=join('save', 'results', 'ours', 'breakout', date))
+                        default=join('save', 'results', 'ours', 'pong', date))
+                        # default=join('save', 'results', 'ours', 'breakout', date))
     parser.add_argument('--model_save_path',
                         help='Output directory for models',
-                        # default=join('save', 'models', 'pong', date, 'model'))
-                        default=join('save', 'models', 'breakout', date, 'model'))
+                        default=join('save', 'models', 'pong', date, 'model'))
+                        # default=join('save', 'models', 'breakout', date, 'model'))
     parser.add_argument('--model_load_dir',
                         help='Directory of the model you want to load.')
     parser.add_argument('--summary_dir',
                         help='Output directory for summaries',
-                        # default=join('save', 'summaries', 'pong', date))
-                        default=join('save', 'summaries', 'breakout', date))
+                        default=join('save', 'summaries', 'pong', date))
+                        # default=join('save', 'summaries', 'breakout', date))
 
     # Hyperparameters
     parser.add_argument('--batch_size',
@@ -110,7 +110,7 @@ def parse_args():
                         type=float)
     parser.add_argument('--k',
                         help='Value of k for k-step lookahead',
-                        default=5,
+                        default=20,
                         type=int)
     parser.add_argument('--gamma',
                         help='The gamma value for k-step lookahead',
