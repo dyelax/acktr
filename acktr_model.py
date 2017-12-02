@@ -79,19 +79,13 @@ class ACKTRModel:
         #value output layer
         self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
         self.value_preds = tf.squeeze(self.value_preds)
-        
-        #done with sparse soft max now
 
         self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
         self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
 
-        #done with sparse soft max now
-            #probs_of_actions_taken = tf.reduce_sum(self.policy_probs * tf.one_hot(self.actions_taken, depth=self.num_actions), axis=1)
-            #self.actor_loss = -tf.reduce_mean(tf.log(probs_of_actions_taken) * self.actor_labels)
         self.actor_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken) * self.actor_labels)
         self.critic_loss = tf.reduce_mean(tf.square(self.critic_labels - self.value_preds)) / 2.0
-        
-        #TODO: implement more stable version that they do in code
+
         self.entropy_regularization = tf.reduce_mean(self.calculate_entropy(self.policy_logits))
         self.actor_loss = self.actor_loss - c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
 
