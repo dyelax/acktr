@@ -1,3 +1,5 @@
+import kfac, kfac_utils
+from baselines_utils import find_trainable_variables
 import constants as c
 import glob
 import numpy as np
@@ -83,7 +85,9 @@ class ACKTRModel:
         self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
         self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
 
-        self.actor_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken) * self.actor_labels)
+        logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken)
+
+        self.actor_loss = tf.reduce_mean(logpac * self.actor_labels)
         self.critic_loss = tf.reduce_mean(tf.square(self.critic_labels - self.value_preds)) / 2.0
 
         self.entropy_regularization = tf.reduce_mean(self.calculate_entropy(self.policy_logits))
@@ -91,11 +95,26 @@ class ACKTRModel:
 
         self.total_loss = self.actor_loss + 0.5 * self.critic_loss
 
-        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
-            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
-            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
+        pg_fisher_loss = -tf.reduce_mean(logpac)
+        sample_net = self.value_preds + tf.random_normal(tf.shape(self.value_preds))
+        vf_fisher_loss = -1.0 * tf.reduce_mean(tf.pow(self.value_preds - tf.stop_gradient(sample_net), 2))
+        joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
 
-        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
+        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,\
+                momentum=0.9, kfac_update=1, epsilon=0.01,\
+                stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
+
+        params = find_trainable_variables("model")
+        grads = tf.gradients(self.total_loss, params)
+
+#        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
+#            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
+#            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
+
+#        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
+
+        update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
+        self.train_op, _ = optim.apply_gradients(list(zip(grads,params)))
         
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
