@@ -194,10 +194,11 @@ if __name__ == '__main__':
     args = parse_args()
     model = ACKTRModel(sess, args, num_actions)
     batch_size = 10
-    model.train_step(np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
+    for _ in xrange(100):
+        model.train_step(np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
                         np.random.randint(num_actions, size=batch_size),
                         np.random.rand(batch_size),
                         np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
                         np.random.randint(2, size=batch_size),
                         1)
-    print(model.get_action(np.random.rand(1,84,84,4)))
+        print(model.get_action(np.random.rand(1,84,84,4)))
