@@ -1,5 +1,5 @@
 import kfac, kfac_utils
-from baselines_utils import find_trainable_variables
+from baselines_utils import find_trainable_variables, ortho_init
 import constants as c
 import glob
 import numpy as np
@@ -32,9 +32,11 @@ class ACKTRModel:
         self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
 
 
-    def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer'):
-        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
-        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
+    def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer', init_scale=1.0):
+        w = tf.get_variable("%s/W" % name, [input_size, output_size], initializer=ortho_init(init_scale))
+        b = tf.get_variable("%s/b" % name, [output_size], initializer=tf.constant_initializer(0.0))
+#        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
+#        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
         outputs = tf.matmul(inputs, w) + b
         self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
         return outputs
@@ -57,10 +59,12 @@ class ACKTRModel:
             in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
             kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
             w_shape = kernel_size + (in_channels, out_channels)
-            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i))
-            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
+            w = tf.get_variable("conv_%d/W" % i, w_shape, initializer=ortho_init(np.sqrt(2)))
+            b = tf.get_variable("conv_%d/b" % i, [out_channels], initializer=tf.constant_initializer(0.0))
+#            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i), )
+#            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
 
-            cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b # TODO: padding?
+            cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
             self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer, 
                 outputs=cur_layer, strides=stride, padding="VALID")
             cur_layer = tf.nn.relu(cur_layer)
@@ -71,7 +75,7 @@ class ACKTRModel:
         flat_sz = conv_shape[1].value * conv_shape[2].value * conv_shape[3].value
         flattened = tf.reshape(cur_layer, shape=[-1, flat_sz])
 
-        fc_layer = self.fully_connected_layer(flattened, flat_sz, c.FC_SIZE, 'fc_layer')
+        fc_layer = self.fully_connected_layer(flattened, flat_sz, c.FC_SIZE, 'fc_layer', init_scale=np.sqrt(2))
         fc_layer = tf.nn.relu(fc_layer)
 
         #policy output layer
