@@ -890,7 +890,7 @@ class KfacOptimizer():
                             return tf.cond(tf.greater_equal(self.sgd_step, self._cold_iter), updateOptimOp, tf.no_op)
                     updateOps.append(optimOp())
 
-        return tf.group(*updateOps), qr
+        return tf.group(*updateOps), qr, global_step_op
 
     def apply_gradients(self, grads):
         coldOptim = tf.train.MomentumOptimizer(
@@ -912,12 +912,12 @@ class KfacOptimizer():
                         sgd_step_op, [self.sgd_step, tf.convert_to_tensor('doing cold sgd step')])
             return tf.group(*[sgd_step_op, coldOptim_op])
 
-        kfacOptim_op, qr = self.apply_gradients_kfac(grads)
+        kfacOptim_op, qr, global_step_op = self.apply_gradients_kfac(grads)
 
         def warmKFACstart():
             return kfacOptim_op
 
-        return tf.cond(tf.greater(self.sgd_step, self._cold_iter), warmKFACstart, coldSGDstart), qr
+        return tf.cond(tf.greater(self.sgd_step, self._cold_iter), warmKFACstart, coldSGDstart), qr, global_step_op
 
     def minimize(self, loss, loss_sampled, var_list=None):
         grads = self.compute_gradients(loss, var_list=var_list)

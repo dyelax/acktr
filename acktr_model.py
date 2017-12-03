@@ -41,7 +41,7 @@ class ACKTRModel:
 
 
     def define_graph(self):
-        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+#        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.learning_rate = tf.placeholder(dtype=tf.float32)
         self.x_batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
         self.actions_taken = tf.placeholder(dtype=tf.int32, shape=[None])
@@ -114,7 +114,7 @@ class ACKTRModel:
 #        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
 
         update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
-        self.train_op, _ = optim.apply_gradients(list(zip(grads,params)))
+        self.train_op, _, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
         
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
@@ -145,7 +145,7 @@ class ACKTRModel:
         critic_return_labels = np.reshape(critic_return_labels, [-1]) #turn into row vec
         actor_advantage_labels = np.reshape(actor_advantage_labels, [-1]) #turn into row vec
 
-        sess_args = [self.global_step, self.a_loss_summary, self.c_loss_summary, self.train_op]
+        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op]
         feed_dict = {self.x_batch: s_batch, 
                     self.actor_labels: actor_advantage_labels,
                     self.critic_labels: critic_return_labels,
