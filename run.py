@@ -136,7 +136,7 @@ def run(args):
                     actions = np.array(batch['action'])
                     rewards = np.array(batch['reward'])
                     next_states = np.array(batch['next_state'])
-                    terminals = np.array(batch['terminal'])
+                    terminals = np.array(batch['terminal'], dtype=int)
 
                     # Visualize 3 random states from the batch
                     # for i in xrange(3):

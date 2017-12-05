@@ -140,7 +140,7 @@ class ACKTRModel:
 
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
         v_s_next = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_next_batch})
-        v_s_next *= terminal_batch #mask out preds for terminal states
+        v_s_next *= (1 - terminal_batch) #mask out preds for terminal states
         
         #create labels
         critic_return_labels = (r_batch + v_s_next * (self.args.gamma ** self.args.k)) #estiated k-step return
