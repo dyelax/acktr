@@ -117,8 +117,9 @@ def run(args):
 
                     if terminal:
                         for i in xrange(LOOK_AHEAD_BUFF_SIZE):
-                            for j in xrange(i, LOOK_AHEAD_BUFF_SIZE - i):
-                                r_d += look_ahead_buff[j][2] * args.gamma**j
+                            r_d = 0
+                            for j in xrange(LOOK_AHEAD_BUFF_SIZE - i):
+                                r_d += look_ahead_buff[i + j][2] * args.gamma**j
 
                             add_sars_to_batch(look_ahead_buff[j][0],
                                               look_ahead_buff[j][1],
