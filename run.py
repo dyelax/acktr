@@ -69,7 +69,7 @@ def run(args):
         look_ahead_buff = collections.deque(maxlen=LOOK_AHEAD_BUFF_SIZE)
 
         state = env.reset()
-        terminal = False
+        terminal = False # True if current state is terminal; False otherwise
 
         if get_episodic_life_env(env).was_real_done_last_reset:
             print 'Terminal'
@@ -94,8 +94,8 @@ def run(args):
             # Fill up the batch
             if len(batch['action']) < args.batch_size:
                 start_state = state
-                # action = agent.get_action(np.expand_dims(state, axis=0))
-                action = agent.get_action_softmax(np.expand_dims(state, axis=0))
+                action = agent.get_action(np.expand_dims(state, axis=0))
+                # action = agent.get_action_softmax(np.expand_dims(state, axis=0))
                 state, reward, terminal, _ = env.step(action)
                 ep_reward += reward
 

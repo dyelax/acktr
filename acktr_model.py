@@ -181,8 +181,8 @@ class ACKTRModel:
         feed_dict = {self.x_batch: state}
         policy_logits = self.sess.run(self.policy_logits, feed_dict=feed_dict)
         policy_logits = np.squeeze(policy_logits)
-        noise = np.random.rand(*policy_logits.shape)
-        return np.argmax(policy_logits - np.log(-np.log(noise)))
+        noise = tf.random_uniform(tf.shape(policy_logits))
+        return tf.argmax(policy_logits - tf.log(-tf.log(noise)), 1)
 
     def write_ep_reward_summary(self, ep_reward, steps):
         summary = self.sess.run(self.ep_reward_summary,
