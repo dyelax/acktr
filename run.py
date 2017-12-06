@@ -54,7 +54,6 @@ def run(args):
     sess = tf.Session()
     agent = ACKTRModel(sess, args, env.action_space.n)
     # agent = RandomAgent(sess, args, env.action_space.n)
-    sess.run(tf.global_variables_initializer())
 
     num_eps = 0
     env_steps = 0
