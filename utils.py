@@ -88,6 +88,10 @@ def parse_args():
                         help='Training minibatch size.',
                         default=640,
                         type=int)
+    parser.add_argument('--num_envs',
+                        help='The number of envs to run at once.',
+                        default=32,
+                        type=int)
     parser.add_argument('--lr',
                         help='Learning rate.',
                         default=0.01,
@@ -143,7 +147,14 @@ def should_save_vid(ep_i):
     # print 'VID INDEX: ', ep_i
     return  ep_i > 75 and ep_i % 2 == 0
 
-def get_env(env_name, results_save_dir, seed):
+def little_func():
+    env = get_env('PongNoFrameskip-v4', '', 0, 4)
+    states = env.reset()
+    for s in states:
+        show_state(s)
+    # show_state(states)
+
+def get_env(env_name, results_save_dir, seed, num_envs):
     """
     Initialize the OpenAI Gym environment.
 
@@ -153,17 +164,18 @@ def get_env(env_name, results_save_dir, seed):
 
     :return: The initialized gym environment.
     """
-    env = make_atari(env_name)
 
-    if results_save_dir:
-        env = gym.wrappers.Monitor(env, results_save_dir,
-                                   video_callable=None)
-        # env = Monitor(env, join(get_dir(results_save_dir), '0'))
+    # Create the 32 environments to parallize
+    envs = []
+    for i in xrange(num_envs):
+        sub_env = make_atari(env_name)
+        sub_env.seed(seed + i)
+        if results_save_dir and i == 0:
+            env = gym.wrappers.Monitor(env, results_save_dir)
+        # TODO: make sure frame_stack works with mutliple envs
+        envs.append(wrap_deepmind(sub_env, frame_stack=True, scale=True))
 
-    env = wrap_deepmind(env, frame_stack=True, scale=True)
-    env.seed(seed)
-
-    return env
+    return SubprocVecEnv(envs)
 
 
 # def get_env(env_name, results_save_dir, seed):
@@ -276,3 +288,6 @@ def show_state(s):
     ax4 = fig.add_subplot(2, 2, 4)
     ax4.imshow(s[:,:,3], cmap='gray')
     plt.show()
+
+
+little_func()

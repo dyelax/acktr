@@ -48,7 +48,8 @@ def run(args):
 
     env = get_env(args.env,
                   results_save_dir=args.results_dir,
-                  seed=args.seed)
+                  seed=args.seed,
+                  num_envs=args.num_envs)
 
     print
     sess = tf.Session()
@@ -85,6 +86,10 @@ def run(args):
             ep_reward = 0
         else:
             print 'Death'
+
+        for i in xrange(args.batch_size // args.num_envs):
+            state, reward, terminal, _ = env.step(action)
+
 
         while True:
             if args.render:
