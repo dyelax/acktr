@@ -16,6 +16,7 @@ class ACKTRModel:
         self.args = args
         self.num_actions = num_actions
         self.define_graph()
+        self.sess.run(tf.global_variables_initializer())
 
         self.saver = tf.train.Saver()
 
@@ -23,10 +24,9 @@ class ACKTRModel:
         if self.args.model_load_dir:
             check_point = tf.train.get_checkpoint_state(self.args.model_load_dir)
             model_exists = check_point and check_point.model_checkpoint_path
-        if model_exists:
-            self.saver.restore(self.sess, check_point.model_checkpoint_path)
-        else:
-            self.sess.run(tf.global_variables_initializer())
+            if model_exists:
+                print 'Restoring model from ' + check_point.model_checkpoint_path
+                self.saver.restore(self.sess, check_point.model_checkpoint_path)
 
         #set up new writer
         self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
@@ -38,7 +38,7 @@ class ACKTRModel:
 #        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
 #        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
         outputs = tf.matmul(inputs, w) + b
-        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
+#        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
         return outputs
 
 
@@ -46,11 +46,11 @@ class ACKTRModel:
 #        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.learning_rate = tf.placeholder(dtype=tf.float32)
         self.x_batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
-        self.actions_taken = tf.placeholder(dtype=tf.int32, shape=[None])
-        self.actor_labels = tf.placeholder(dtype=tf.float32, shape=[None])
-        self.critic_labels = tf.placeholder(dtype=tf.float32, shape=[None])
+        self.actions_taken = tf.placeholder(dtype=tf.int32)
+        self.actor_labels = tf.placeholder(dtype=tf.float32)
+        self.critic_labels = tf.placeholder(dtype=tf.float32)
 
-        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
+#        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
         #convs
         channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
@@ -65,8 +65,8 @@ class ACKTRModel:
 #            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
 
             cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
-            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer, 
-                outputs=cur_layer, strides=stride, padding="VALID")
+#            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
+#                outputs=cur_layer, strides=stride, padding="VALID")
             cur_layer = tf.nn.relu(cur_layer)
             prev_layer = cur_layer
 
@@ -86,8 +86,8 @@ class ACKTRModel:
         self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
         self.value_preds = tf.squeeze(self.value_preds)
 
-        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
-        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
+#        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
+#        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
 
         logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken)
 
@@ -104,8 +104,8 @@ class ACKTRModel:
         vf_fisher_loss = -1.0 * tf.reduce_mean(tf.pow(self.value_preds - tf.stop_gradient(sample_net), 2))
         joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
 
-        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,\
-                momentum=0.9, kfac_update=1, epsilon=0.01,\
+        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
+                momentum=0.9, kfac_update=1, epsilon=0.01,
                 stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
 
         params = find_trainable_variables("model")
@@ -117,6 +117,7 @@ class ACKTRModel:
 
 #        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
 
+        # TODO: is this return value necessary?
         update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
         self.train_op, _, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
         
@@ -143,16 +144,16 @@ class ACKTRModel:
         v_s_next *= (1 - terminal_batch) #mask out preds for terminal states
         
         #create labels
-        critic_return_labels = (r_batch + v_s_next * (self.args.gamma ** self.args.k)) #estiated k-step return
-        actor_advantage_labels = critic_return_labels - v_s #estiated k-step return - v_s
+        k_step_return = (r_batch + v_s_next * (self.args.gamma ** (self.args.k + 1))) #estiated k-step return
+        advantage = k_step_return - v_s #estimated k-step return - v_s
         #reshape to remove extra dim
-        critic_return_labels = np.reshape(critic_return_labels, [-1]) #turn into row vec
-        actor_advantage_labels = np.reshape(actor_advantage_labels, [-1]) #turn into row vec
+        k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
+        advantage = np.reshape(advantage, [-1]) #turn into row vec
 
         sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op]
         feed_dict = {self.x_batch: s_batch, 
-                    self.actor_labels: actor_advantage_labels,
-                    self.critic_labels: critic_return_labels,
+                    self.actor_labels: advantage,
+                    self.critic_labels: k_step_return,
                     self.actions_taken: a_batch,
                     self.learning_rate: self.args.lr * (1 - percent_done)}
         step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
@@ -180,8 +181,10 @@ class ACKTRModel:
     def get_action(self, state):
         feed_dict = {self.x_batch: state}
         policy_logits = self.sess.run(self.policy_logits, feed_dict=feed_dict)
+        # TODO: don't squeeze when multithreading
         policy_logits = np.squeeze(policy_logits)
         noise = np.random.rand(*policy_logits.shape)
+        # TODO: when multithreading, we should argmax along dim 1
         return np.argmax(policy_logits - np.log(-np.log(noise)))
 
     def write_ep_reward_summary(self, ep_reward, steps):
