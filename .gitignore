@@ -1,8 +1,5 @@
-save/results/ours/
-save/summaries/
-save/models/
+save/
 *.idea
-*.xml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
