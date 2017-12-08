@@ -40,7 +40,7 @@ class Runner:
             actions = self.agent.get_actions(self.states)
             next_states, rewards, terminals, infos = self.env.step(actions)
 
-
+            # TODO: why only saving ep reward for 0th env?
             # This will trigger when the 0th env has a "real done." ie a full episode has finished.
             if infos[0]['real_done']:
                 print '-' * 30
@@ -80,12 +80,22 @@ class Runner:
         # NOTE: the discounted reward is computed over the num_steps
         #       rewards earlier get more "look ahead" reward added
         #       to them than later states
+
+        # looping over envs
         for i, rewards in enumerate(batch_rewards):
             new_rewards = []
             # TODO: They don't stop when they hit a terminal, but maybe we should
-            for j, r in enumerate(rewards):
-                r_d = r * self.args.gamma ** j
+            # building up new_rewards in reverse order
+            r_d = 0
+            for j in reversed(xrange(len(rewards))):
+                r = rewards[j]
+                t = terminals[j]
+                r_d *= self.args.gamma * (1 - t)
+                r_d += r
                 new_rewards.append(r_d)
+
+            # built new_rewards up in reverse order, so now put it back in time order
+            new_rewards = reversed(new_rewards)
 
             batch_rewards[i, :] = np.array(new_rewards)
 

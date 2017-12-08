@@ -144,7 +144,8 @@ class ACKTRModel:
         v_s_next *= (1 - terminal_batch) #mask out preds for terminal states
 
         #create labels
-        k_step_return = (r_batch + v_s_next * (self.args.gamma ** (self.args.k + 1))) #estiated k-step return
+#        k_step_return = (r_batch + v_s_next * (self.args.gamma ** (self.args.k + 1))) #estimated k-step return
+        k_step_return = r_batch
         advantage = k_step_return - v_s #estimated k-step return - v_s
         #reshape to remove extra dim
         k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
