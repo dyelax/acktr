@@ -95,7 +95,7 @@ class Runner:
                 new_rewards.append(r_d)
 
             # built new_rewards up in reverse order, so now put it back in time order
-            new_rewards = reversed(new_rewards)
+            new_rewards.reverse()
 
             batch_rewards[i, :] = np.array(new_rewards)
 
