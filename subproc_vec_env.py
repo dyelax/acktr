@@ -109,10 +109,13 @@ class SubprocVecEnv(VecEnv):
         self.remotes[0].send(('get_spaces', None))
         self.action_space, self.observation_space = self.remotes[0].recv()
 
+        self.num_steps = 0
+
 
     def step(self, actions):
         for remote, action in zip(self.remotes, actions):
             remote.send(('step', action))
+            self.num_steps += 1
         results = [remote.recv() for remote in self.remotes]
         obs, rews, dones, infos = zip(*results)
         return np.stack(obs), np.stack(rews), np.stack(dones), infos

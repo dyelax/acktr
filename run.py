@@ -46,7 +46,7 @@ class Runner:
                 print '-' * 30
                 print 'Episode:        ', infos[0]['num_eps']
                 print 'Train steps:    ', self.global_step
-                print 'Env steps:      ', infos[0]['env_steps']
+                print 'Env steps:      ', self.env.num_steps
                 print 'Episode reward: ', infos[0]['ep_reward']
                 print '-' * 30
 
@@ -97,12 +97,9 @@ class Runner:
 
 
     def run(self):
-        env_steps = 0
-        global_step = 0
-
         print '-' * 30
 
-        while global_step < self.args.num_steps * 1.1:
+        while self.env.num_steps < self.args.num_steps * 1.1:
             if self.args.train:
                 states, actions, rewards, next_states, terminals = self.get_batch()
 
@@ -111,7 +108,7 @@ class Runner:
                                                          rewards,
                                                          next_states,
                                                          terminals,
-                                                         env_steps)
+                                                         self.env.num_steps)
 
                 print 'Train step %d' % self.global_step
 
