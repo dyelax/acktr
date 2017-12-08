@@ -120,7 +120,7 @@ class ACKTRModel:
         # TODO: is this return value necessary?
         update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
         self.train_op, _, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
-        
+
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
         self.c_loss_summary = tf.summary.scalar("critic_loss", self.critic_loss)
@@ -142,7 +142,7 @@ class ACKTRModel:
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
         v_s_next = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_next_batch})
         v_s_next *= (1 - terminal_batch) #mask out preds for terminal states
-        
+
         #create labels
         k_step_return = (r_batch + v_s_next * (self.args.gamma ** (self.args.k + 1))) #estiated k-step return
         advantage = k_step_return - v_s #estimated k-step return - v_s
@@ -151,7 +151,7 @@ class ACKTRModel:
         advantage = np.reshape(advantage, [-1]) #turn into row vec
 
         sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op]
-        feed_dict = {self.x_batch: s_batch, 
+        feed_dict = {self.x_batch: s_batch,
                     self.actor_labels: advantage,
                     self.critic_labels: k_step_return,
                     self.actions_taken: a_batch,
@@ -169,23 +169,22 @@ class ACKTRModel:
 
 
     # TODO later: increase temp of softmax over time?
-    def get_action_softmax(self, state):
+    def get_actions_softmax(self, states):
         '''
         Predict all Q values for a state -> softmax dist -> sample from dist
         '''
-        feed_dict = {self.x_batch: state}
+        feed_dict = {self.x_batch: states}
         policy_probs = self.sess.run(self.policy_probs, feed_dict=feed_dict)
         policy_probs = np.squeeze(policy_probs)
-        return np.random.choice(len(policy_probs), p=policy_probs)
+        actions = [np.random.choice(len(state_probs), p=policy_probs) for state_probs in policy_probs]
+        return
 
-    def get_action(self, state):
-        feed_dict = {self.x_batch: state}
+    def get_actions(self, states):
+        feed_dict = {self.x_batch: states}
         policy_logits = self.sess.run(self.policy_logits, feed_dict=feed_dict)
-        # TODO: don't squeeze when multithreading
-        policy_logits = np.squeeze(policy_logits)
+        policy_logits = policy_logits
         noise = np.random.rand(*policy_logits.shape)
-        # TODO: when multithreading, we should argmax along dim 1
-        return np.argmax(policy_logits - np.log(-np.log(noise)))
+        return np.argmax(policy_logits - np.log(-np.log(noise)), axis=1)
 
     def write_ep_reward_summary(self, ep_reward, steps):
         summary = self.sess.run(self.ep_reward_summary,

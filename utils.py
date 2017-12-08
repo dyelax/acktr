@@ -10,7 +10,7 @@ from sys import maxint
 from glob import glob
 from matplotlib import pyplot as plt
 
-from atari_wrapper import make_atari, wrap_deepmind
+from atari_wrapper import make_atari, wrap_deepmind, EpisodicLifeEnv
 from subproc_vec_env import SubprocVecEnv
 from monitor import Monitor
 
@@ -65,7 +65,7 @@ def parse_args():
                         type=int)
     parser.add_argument('--model_save_freq',
                         help='Frequency to save the model (in steps',
-                        default=1000,
+                        default=100,
                         type=int)
 
     # Paths
