@@ -10,7 +10,8 @@ from sys import maxint
 from glob import glob
 from matplotlib import pyplot as plt
 
-from atari_wrapper import make_atari, wrap_deepmind
+from atari_wrapper import make_atari, wrap_deepmind, EpisodicLifeEnv
+from subproc_vec_env import SubprocVecEnv
 from monitor import Monitor
 
 
@@ -64,7 +65,7 @@ def parse_args():
                         type=int)
     parser.add_argument('--model_save_freq',
                         help='Frequency to save the model (in steps',
-                        default=1000,
+                        default=100,
                         type=int)
 
     # Paths
@@ -87,6 +88,10 @@ def parse_args():
     parser.add_argument('--batch_size',
                         help='Training minibatch size.',
                         default=640,
+                        type=int)
+    parser.add_argument('--num_envs',
+                        help='The number of envs to run at once.',
+                        default=32,
                         type=int)
     parser.add_argument('--lr',
                         help='Learning rate.',
@@ -143,7 +148,8 @@ def should_save_vid(ep_i):
     # print 'VID INDEX: ', ep_i
     return  ep_i > 75 and ep_i % 2 == 0
 
-def get_env(env_name, results_save_dir, seed):
+
+def get_env(env_name, results_save_dir, seed, num_envs):
     """
     Initialize the OpenAI Gym environment.
 
@@ -153,44 +159,26 @@ def get_env(env_name, results_save_dir, seed):
 
     :return: The initialized gym environment.
     """
-    env = make_atari(env_name)
 
-    if results_save_dir:
-        env = gym.wrappers.Monitor(env, results_save_dir,
-                                   video_callable=None)
-        # env = Monitor(env, join(get_dir(results_save_dir), '0'))
+    # Create the 32 environments to parallize
+    envs = []
+    def make_sub_env_creator(env_num):
+        """ Returns a function that creates an event. """
+        def sub_env_creator():
+            sub_env = make_atari(env_name)
+            sub_env.seed(seed + env_num)
+            if results_save_dir and env_num == 0:
+                sub_env = gym.wrappers.Monitor(sub_env, results_save_dir)
+            sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
 
-    env = wrap_deepmind(env, frame_stack=True, scale=True)
-    env.seed(seed)
+            return sub_env
 
-    return env
+        return sub_env_creator
 
+    envs = [make_sub_env_creator(i) for i in range(num_envs)]
 
-# def get_env(env_name, results_save_dir, seed):
-#     """
-#     Initialize the OpenAI Gym environment.
-#
-#     :param env_name: The name of the gym environment to use, (e.g. 'Pong-v0')
-#     :param results_save_dir: Output directory for results.
-#     :param seed: The random seed.
-#
-#     :return: The initialized gym environment.
-#     """
-#     def make_env(rank):
-#         env = make_atari(env_name)
-#         env.seed(seed + rank)
-#
-#         if results_save_dir:
-#             # env = gym.wrappers.Monitor(env, join(results_save_dir, str(rank)),
-#             #                            video_callable=None)
-#             env = Monitor(env, join(get_dir(results_save_dir), str(rank)))
-#
-#         return wrap_deepmind(env)
-#
-#     env = SubprocVecEnv([make_env(i) for i in range(32)])
-#
-#
-#     return env
+    return SubprocVecEnv(envs)
+
 
 #
 # Monitor
