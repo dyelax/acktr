@@ -81,14 +81,17 @@ class Runner:
         #       rewards earlier get more "look ahead" reward added
         #       to them than later states
 
+        # getting next state for each env, which should be the same for any column
+        next_states = batch_next_states[:, 0]
+        values_of_next_states = self.agent.value(next_states)
         # looping over envs
-        for i, rewards in enumerate(batch_rewards):
+        for i, (rewards, terminals) in enumerate(zip(batch_rewards, batch_terminals)):
             # appending value of next state to the rewards if episode hasn't ended
             this_env_terminal = batch_terminals[i][-1]
             if not this_env_terminal:
-                next_state = batch_next_states[i][0] # next state is same for every step in a given env
-                v_s_next = self.agent.value(np.array([next_state]))
+                v_s_next = values_of_next_states[i]
                 rewards = np.append(rewards, v_s_next)
+                terminals = np.append(terminals, 0)
 
             new_rewards = []
             # TODO: They don't stop when they hit a terminal, but maybe we should
@@ -104,7 +107,10 @@ class Runner:
             # built new_rewards up in reverse order, so now put it back in time order
             new_rewards.reverse()
 
-            batch_rewards[i, :] = np.array(new_rewards)
+            # removing extra entry for value of next state (when not terminal)
+            if not this_env_terminal:
+                batch_rewards[i, :] = np.array(new_rewards[:-1])
+                batch_terminals[i, :] = terminals[:-1]
 
         return (batch_states.reshape((self.args.batch_size, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS)),
                 batch_actions.flatten(),

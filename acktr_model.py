@@ -138,7 +138,7 @@ class ACKTRModel:
 
     def value(self, s_batch):
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
-        return v_s
+        return np.squeeze(v_s)
 
 
     def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch, env_steps):
