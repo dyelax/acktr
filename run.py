@@ -88,7 +88,7 @@ class Runner:
             if not this_env_terminal:
                 next_state = batch_next_states[i][0] # next state is same for every step in a given env
                 v_s_next = self.agent.value(np.array([next_state]))
-                np.append(rewards, v_s_next)
+                rewards = np.append(rewards, v_s_next)
 
             new_rewards = []
             # TODO: They don't stop when they hit a terminal, but maybe we should
