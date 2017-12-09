@@ -83,6 +83,13 @@ class Runner:
 
         # looping over envs
         for i, rewards in enumerate(batch_rewards):
+            # appending value of next state to the rewards if episode hasn't ended
+            this_env_terminal = batch_terminals[i][-1]
+            if not this_env_terminal:
+                next_state = batch_next_states[i][0] # next state is same for every step in a given env
+                v_s_next = self.agent.value(np.array([next_state]))
+                np.append(rewards, v_s_next)
+
             new_rewards = []
             # TODO: They don't stop when they hit a terminal, but maybe we should
             # building up new_rewards in reverse order
