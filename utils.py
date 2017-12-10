@@ -160,7 +160,7 @@ def get_env(env_name, results_save_dir, seed, num_envs):
     :return: The initialized gym environment.
     """
 
-    # Create the 32 environments to parallize
+    # Create the 32 environments to parallelize
     envs = []
     def make_sub_env_creator(env_num):
         """ Returns a function that creates an event. """
