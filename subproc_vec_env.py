@@ -47,10 +47,9 @@ def worker(i, remote, parent_remote, env_fn_wrapper):
                 info['real_done'] = True
                 try:
                     if get_episodic_life_env(env).was_real_done_last_reset:
-                        if i == 0:
-                            info['ep_reward'] = ep_reward
-                            info['num_eps'] = num_eps
-                            info['env_steps'] = env_steps
+                        info['ep_reward'] = ep_reward
+                        info['num_eps'] = num_eps
+                        info['env_steps'] = env_steps
 
                         num_eps += 1
                         ep_reward = 0
