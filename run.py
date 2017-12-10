@@ -33,14 +33,13 @@ class Runner:
 
         # Take the number of steps across all envs to fill a batch
 
-        # TODO: Fix episode summaries with subproc_vec_env
         num_steps = self.args.batch_size // self.args.num_envs
         for step_num in xrange(num_steps):
             # Pick an action and perform it in the envs
-            actions = self.agent.get_actions_softmax(self.states)
+            # actions = self.agent.get_actions_softmax(self.states)
+            actions = self.agent.get_actions(self.states)
             next_states, rewards, terminals, infos = self.env.step(actions)
 
-            # TODO: why only saving ep reward for 0th env?
             # This will trigger when the 0th env has a "real done." ie a full episode has finished.
             if infos[0]['real_done']:
                 print '-' * 30
@@ -122,18 +121,20 @@ class Runner:
     def run(self):
         print '-' * 30
 
+        train_steps = 0
         while self.env.num_steps < self.args.num_steps * 1.1:
+            train_steps += 1
             if self.args.train:
                 states, actions, rewards, next_states, terminals = self.get_batch()
 
-                self.global_step = self.agent.train_step(states,
-                                                         actions,
-                                                         rewards,
-                                                         next_states,
-                                                         terminals,
-                                                         self.env.num_steps)
+                self.agent.train_step(states,
+                                      actions,
+                                      rewards,
+                                      next_states,
+                                      terminals,
+                                      self.env.num_steps)
 
-                print 'Train step %d' % self.global_step
+                print 'Train step %d' % train_steps
 
         # Close the env and write monitor results to disk
         self.env.close()

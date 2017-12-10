@@ -10,7 +10,7 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-
+# noinspection PyAttributeOutsideInit
 class ACKTRModel:
     def __init__(self, sess, args, num_actions):
         self.sess = sess
@@ -21,7 +21,6 @@ class ACKTRModel:
 
         self.saver = tf.train.Saver()
 
-        model_exists = False
         if self.args.model_load_dir:
             check_point = tf.train.get_checkpoint_state(self.args.model_load_dir)
             model_exists = check_point and check_point.model_checkpoint_path
@@ -33,109 +32,126 @@ class ACKTRModel:
         self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
 
 
-    def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer', init_scale=1.0):
-        w = tf.get_variable("%s/W" % name, [input_size, output_size], initializer=ortho_init(init_scale))
-        b = tf.get_variable("%s/b" % name, [output_size], initializer=tf.constant_initializer(0.0))
-#        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
-#        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
-        outputs = tf.matmul(inputs, w) + b
-#        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
-        return outputs
-
 
     def define_graph(self):
-#        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        def conv(x, scope, nf, rf, stride, pad='VALID', act=tf.nn.relu, init_scale=1.0):
+            with tf.variable_scope(scope):
+                nin = x.get_shape()[3].value
+                w = tf.get_variable("w", [rf, rf, nin, nf], initializer=ortho_init(init_scale))
+                b = tf.get_variable("b", [nf], initializer=tf.constant_initializer(0.0))
+                z = tf.nn.conv2d(x, w, strides=[1, stride, stride, 1], padding=pad) + b
+                h = act(z)
+                return h
+
+        def fc(x, scope, nh, act=tf.nn.relu, init_scale=1.0):
+            with tf.variable_scope(scope):
+                nin = x.get_shape()[1].value
+                w = tf.get_variable("w", [nin, nh], initializer=ortho_init(init_scale))
+                b = tf.get_variable("b", [nh], initializer=tf.constant_initializer(0.0))
+                z = tf.matmul(x, w) + b
+                h = act(z)
+                return h
+
+        def sample(logits):
+            noise = tf.random_uniform(tf.shape(logits))
+            return tf.argmax(logits - tf.log(-tf.log(noise)), 1)
+
+        def conv_to_fc(x):
+            nh = np.prod([v.value for v in x.get_shape()[1:]])
+            x = tf.reshape(x, [-1, nh])
+            return x
+
+        def cat_entropy(logits):
+            a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
+            ea0 = tf.exp(a0)
+            z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
+            p0 = ea0 / z0
+            return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+
+        def mse(pred, target):
+            return tf.square(pred - target) / 2.
+
+        def find_trainable_variables(key):
+            with tf.variable_scope(key):
+                return tf.trainable_variables()
+
+        class Scheduler(object):
+            def __init__(self, v, nvalues):
+                self.n = 0.
+                self.v = v
+                self.nvalues = nvalues
+
+            def value(self):
+                current_value = self.v * (1 - (self.n / self.nvalues))
+                self.n += 1.
+                return current_value
+
+    #        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.learning_rate = tf.placeholder(dtype=tf.float32)
-        self.x_batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
+        self.x_batch = tf.placeholder(dtype=tf.uint8, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
         self.actions_taken = tf.placeholder(dtype=tf.int32)
         self.actor_labels = tf.placeholder(dtype=tf.float32)
         self.critic_labels = tf.placeholder(dtype=tf.float32)
 
 #        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
-        with tf.variable_scope("model"):
+        with tf.variable_scope("model", reuse=False):
+            # noinspection PyTypeChecker
+            h = conv(tf.cast(self.x_batch, tf.float32)/255., 'c1', nf=32, rf=8, stride=4, init_scale=np.sqrt(2))
+            h2 = conv(h, 'c2', nf=64, rf=4, stride=2, init_scale=np.sqrt(2))
+            h3 = conv(h2, 'c3', nf=32, rf=3, stride=1, init_scale=np.sqrt(2))
+            h3 = conv_to_fc(h3)
+            h4 = fc(h3, 'fc1', nh=512, init_scale=np.sqrt(2))
+            pi = fc(h4, 'pi', self.num_actions, act=lambda x:x)
+            vf = fc(h4, 'v', 1, act=lambda x:x)
 
-            #convs
-            channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
-            prev_layer = self.x_batch
-            for i in xrange(c.NUM_CONV_LAYERS):
-                in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
-                kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
-                w_shape = kernel_size + (in_channels, out_channels)
-                w = tf.get_variable("conv_%d/W" % i, w_shape, initializer=ortho_init(np.sqrt(2)))
-                b = tf.get_variable("conv_%d/b" % i, [out_channels], initializer=tf.constant_initializer(0.0))
-    #            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i), )
-    #            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
+        self.value_preds = vf[:, 0]
+        self.action_preds = sample(pi)
 
-                cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
-    #            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
-    #                outputs=cur_layer, strides=stride, padding="VALID")
-                cur_layer = tf.nn.relu(cur_layer)
-                prev_layer = cur_layer
+        params = tf.trainable_variables() #"model" scope's variables
 
-            #fully connected layer (last shared)
-            conv_shape = cur_layer.shape
-            flat_sz = conv_shape[1].value * conv_shape[2].value * conv_shape[3].value
-            flattened = tf.reshape(cur_layer, shape=[-1, flat_sz])
+        self.A = tf.placeholder(tf.int32)
+        self.ADV = tf.placeholder(tf.float32)
+        self.R = tf.placeholder(tf.float32)
 
-            fc_layer = self.fully_connected_layer(flattened, flat_sz, c.FC_SIZE, 'fc_layer', init_scale=np.sqrt(2))
-            fc_layer = tf.nn.relu(fc_layer)
+        logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pi, labels=self.A)
+        self.logits = logits = pi
 
-            #policy output layer
-            self.policy_logits = self.fully_connected_layer(fc_layer, c.FC_SIZE, self.num_actions, 'policy_logits')
-            self.policy_probs = tf.nn.softmax(self.policy_logits)
+        ##training loss
+        pg_loss = tf.reduce_mean(self.ADV * logpac)
+        entropy = tf.reduce_mean(cat_entropy(pi))
+        self.policy_loss = pg_loss - 0.01 * entropy
+        self.value_loss = tf.reduce_mean(mse(tf.squeeze(vf), self.R))
+        train_loss = pg_loss + 0.5 * self.value_loss
 
-            #value output layer
-            self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
-            self.value_preds = tf.squeeze(self.value_preds)
+        ##Fisher loss construction
+        self.pg_fisher = pg_fisher_loss = -tf.reduce_mean(logpac)
+        sample_net = vf + tf.random_normal(tf.shape(vf))
+        self.vf_fisher = vf_fisher_loss = - 1.0 * tf.reduce_mean(
+            tf.pow(vf - tf.stop_gradient(sample_net), 2))
+        self.joint_fisher = joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
 
-    #        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
-    #        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
+        self.params = params = find_trainable_variables("model")
 
-            params = tf.trainable_variables() #"model" scope's variables
-
-
-        #intentionally defined outside of scope.. Loss calcluations:
-
-        logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken)
-
-        self.actor_loss = tf.reduce_mean(logpac * self.actor_labels)
-        self.critic_loss = tf.reduce_mean(tf.square(self.critic_labels - self.value_preds)) / 2.0
-
-        self.entropy_regularization = tf.reduce_mean(self.calculate_entropy(self.policy_logits))
-        self.actor_loss = self.actor_loss - c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
-
-        self.total_loss = self.actor_loss + 0.5 * self.critic_loss
-
-        pg_fisher_loss = -tf.reduce_mean(logpac)
-        sample_net = self.value_preds + tf.random_normal(tf.shape(self.value_preds))
-        vf_fisher_loss = -1.0 * tf.reduce_mean(tf.pow(self.value_preds - tf.stop_gradient(sample_net), 2))
-        joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
+        self.grads_check = grads = tf.gradients(train_loss, params)
 
 
-        #Gradients and updates:
 
-        #params = find_trainable_variables("model")
-        grads = tf.gradients(self.total_loss, params)
-
+        # with tf.device('/gpu:0'):
         self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
-                    momentum=0.9, kfac_update=1, epsilon=0.01,
-                    stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
+                                                momentum=0.9, kfac_update=1, epsilon=0.01,
+                                                stats_decay=0.99, async=1, cold_iter=10,
+                                                max_grad_norm=0.5)
 
-
-#        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
-#            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
-#            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
-
-#        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
-
-        # TODO: is this return value necessary?
         update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
-        self.train_op, _, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
+        # print params
+        # print grads
+        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads, params)))
+        self.lr = Scheduler(v=self.args.lr, nvalues=self.args.num_steps)
 
         #summaries
-        self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
-        self.c_loss_summary = tf.summary.scalar("critic_loss", self.critic_loss)
+        # self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
+        # self.c_loss_summary = tf.summary.scalar("critic_loss", self.critic_loss)
 
         self.ep_reward = tf.placeholder(tf.float32)
         self.ep_reward_summary = tf.summary.scalar("episode_reward", self.ep_reward)
@@ -168,41 +184,45 @@ class ACKTRModel:
         k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
         advantage = np.reshape(advantage, [-1]) #turn into row vec
 
-        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op]
+        for step in range(len(s_batch)):
+            cur_lr = self.lr.value()
+
+        sess_args = self.train_op
         feed_dict = {self.x_batch: s_batch,
-                    self.actor_labels: advantage,
-                    self.critic_labels: k_step_return,
-                    self.actions_taken: a_batch,
-                    self.learning_rate: self.args.lr * (1 - percent_done)}
-        step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
+                     self.actor_labels: advantage,
+                     self.critic_labels: k_step_return,
+                     self.actions_taken: a_batch,
+                     self.learning_rate: cur_lr,
+                     self.R: r_batch,
+                     self.ADV: advantage,
+                     self.A: a_batch}
+        self.sess.run(sess_args, feed_dict=feed_dict)
 
-        if (step - 1) % self.args.summary_save_freq == 0:
-            self.summary_writer.add_summary(a_summary, global_step=step)
-            self.summary_writer.add_summary(c_summary, global_step=step)
-
-        if (step - 1) % self.args.model_save_freq == 0:
-            self.saver.save(self.sess, self.args.model_save_path, global_step=step)
-
-        return step
+        # if (step - 1) % self.args.summary_save_freq == 0:
+        #     self.summary_writer.add_summary(a_summary, global_step=step)
+        #     self.summary_writer.add_summary(c_summary, global_step=step)
+        #
+        # if (step - 1) % self.args.model_save_freq == 0:
+        #     self.saver.save(self.sess, self.args.model_save_path, global_step=step)
+        #
+        # return step
 
 
     # TODO later: increase temp of softmax over time?
-    def get_actions_softmax(self, states):
-        '''
-        Predict all Q values for a state -> softmax dist -> sample from dist
-        '''
-        feed_dict = {self.x_batch: states}
-        policy_probs = self.sess.run(self.policy_probs, feed_dict=feed_dict)
-        # policy_probs = np.squeeze(policy_probs)
-        actions = np.array([np.random.choice(len(state_probs), p=state_probs) for state_probs in policy_probs])
-        return actions
+    # def get_actions_softmax(self, states):
+    #     '''
+    #     Predict all Q values for a state -> softmax dist -> sample from dist
+    #     '''
+    #     feed_dict = {self.x_batch: states}
+    #     policy_probs = self.sess.run(self.policy_probs, feed_dict=feed_dict)
+    #     # policy_probs = np.squeeze(policy_probs)
+    #     actions = np.array([np.random.choice(len(state_probs), p=state_probs) for state_probs in policy_probs])
+    #     return actions
 
     def get_actions(self, states):
         feed_dict = {self.x_batch: states}
-        policy_logits = self.sess.run(self.policy_logits, feed_dict=feed_dict)
-        policy_logits = policy_logits
-        noise = np.random.rand(*policy_logits.shape)
-        return np.argmax(policy_logits - np.log(-np.log(noise)), axis=1)
+        actions = self.sess.run(self.action_preds, feed_dict=feed_dict)
+        return actions
 
     def write_ep_reward_summary(self, ep_reward, steps):
         summary = self.sess.run(self.ep_reward_summary,
@@ -225,4 +245,4 @@ if __name__ == '__main__':
                         np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
                         np.random.randint(2, size=batch_size),
                         1)
-        print(model.get_action(np.random.rand(1,84,84,4)))
+        print(model.get_actions(np.random.rand(1,84,84,4)))
