@@ -30,7 +30,7 @@ class ACKTRModel:
                 self.saver.restore(self.sess, check_point.model_checkpoint_path)
 
         #set up new writer
-        self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
+        self.summary_writer = tf.summary.FileWriter(self.args.save_dir, self.sess.graph)
 
 
     def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer', init_scale=1.0):
@@ -131,7 +131,7 @@ class ACKTRModel:
 
         # TODO: is this return value necessary?
         update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
-        self.train_op, _, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
+        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
 
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
@@ -153,7 +153,7 @@ class ACKTRModel:
         return np.squeeze(v_s)
 
 
-    def train_step(self, s_batch, a_batch, r_batch, s_next_batch, terminal_batch, env_steps):
+    def train_step(self, s_batch, a_batch, r_batch, env_steps):
         percent_done = float(env_steps) / (1.1 * self.args.num_steps)
 
         v_s = self.value(s_batch)
@@ -181,7 +181,7 @@ class ACKTRModel:
             self.summary_writer.add_summary(c_summary, global_step=step)
 
         if (step - 1) % self.args.model_save_freq == 0:
-            self.saver.save(self.sess, self.args.model_save_path, global_step=step)
+            self.saver.save(self.sess, os.path.join(self.args.save_dir, 'model'), global_step=step)
 
         return step
 
@@ -225,4 +225,4 @@ if __name__ == '__main__':
                         np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
                         np.random.randint(2, size=batch_size),
                         1)
-        print(model.get_action(np.random.rand(1,84,84,4)))
+        print(model.get_actions(np.random.rand(1,84,84,4)))

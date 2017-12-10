@@ -10,7 +10,7 @@ from sys import maxint
 from glob import glob
 from matplotlib import pyplot as plt
 
-from atari_wrapper import make_atari, wrap_deepmind, EpisodicLifeEnv
+from atari_wrapper import make_atari, wrap_deepmind
 from subproc_vec_env import SubprocVecEnv
 from monitor import Monitor
 
@@ -69,20 +69,12 @@ def parse_args():
                         type=int)
 
     # Paths
-    parser.add_argument('--results_dir',
+    parser.add_argument('--save_dir',
                         help='Output directory for results',
                         default=join('save', 'results', 'ours', 'pong', date))
                         # default=join('save', 'results', 'ours', 'breakout', date))
-    parser.add_argument('--model_save_path',
-                        help='Output directory for models',
-                        default=join('save', 'models', 'pong', date, 'model'))
-                        # default=join('save', 'models', 'breakout', date, 'model'))
     parser.add_argument('--model_load_dir',
                         help='Directory of the model you want to load.')
-    parser.add_argument('--summary_dir',
-                        help='Output directory for summaries',
-                        default=join('save', 'summaries', 'pong', date))
-                        # default=join('save', 'summaries', 'breakout', date))
 
     # Hyperparameters
     parser.add_argument('--batch_size',
@@ -128,9 +120,7 @@ def parse_args():
         environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     # Create save directories if they don't exist
-    get_dir(args.results_dir)
-    get_dir(args.model_save_path.rpartition('/')[0])
-    get_dir(args.summary_dir)
+    get_dir(args.save_dir)
 
     return args
 
@@ -169,7 +159,8 @@ def get_env(env_name, results_save_dir, seed, num_envs):
             sub_env.seed(seed + env_num)
             if results_save_dir and env_num == 0:
                 sub_env = gym.wrappers.Monitor(sub_env, results_save_dir)
-            sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
+            # sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
+            sub_env = wrap_deepmind(sub_env, frame_stack=True)
 
             return sub_env
 
