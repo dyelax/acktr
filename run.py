@@ -160,19 +160,13 @@ class Runner(object):
         nh, nw, nc = env.observation_space.shape
         nenv = env.num_envs
         self.batch_ob_shape = (nenv*nsteps, nh, nw, nc*nstack)
-        self.obs = np.zeros((nenv, nh, nw, nc*nstack), dtype=np.uint8)
-        obs = env.reset()
-        self.update_obs(obs)
+        self.obs = env.reset()
         self.gamma = gamma
         self.nsteps = nsteps
         self.dones = [False for _ in range(nenv)]
         self.agent = agent
 
         self.global_step = 0
-
-    def update_obs(self, obs):
-        self.obs = np.roll(self.obs, shift=-1, axis=3)
-        self.obs[:, :, :, -1] = obs[:, :, :, 0]
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [],[],[],[],[]
@@ -188,7 +182,7 @@ class Runner(object):
             for n, done in enumerate(dones):
                 if done:
                     self.obs[n] = self.obs[n]*0
-            self.update_obs(obs)
+            self.obs = obs
             # self.obs = obs
             mb_rewards.append(rewards)
 
