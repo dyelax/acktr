@@ -95,7 +95,7 @@ def parse_args():
                         type=int)
     parser.add_argument('--lr',
                         help='Learning rate.',
-                        default=0.01,
+                        default=0.25,
                         type=float)
     parser.add_argument('--damping_lambda',
                         help='The damping factor for KFAC.',
