@@ -193,7 +193,7 @@ class ACKTRModel:
         '''
         feed_dict = {self.x_batch: states}
         policy_probs = self.sess.run(self.policy_probs, feed_dict=feed_dict)
-        policy_probs = np.squeeze(policy_probs)
+        # policy_probs = np.squeeze(policy_probs)
         actions = [np.random.choice(len(state_probs), p=policy_probs) for state_probs in policy_probs]
         return
 
