@@ -1,5 +1,6 @@
 import kfac, kfac_utils
-from baselines_utils import find_trainable_variables, ortho_init
+#from baselines_utils import find_trainable_variables, ortho_init
+from baselines_utils import ortho_init
 import constants as c
 import glob
 import numpy as np
@@ -52,42 +53,49 @@ class ACKTRModel:
 
 #        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
-        #convs
-        channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
-        prev_layer = self.x_batch
-        for i in xrange(c.NUM_CONV_LAYERS):
-            in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
-            kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
-            w_shape = kernel_size + (in_channels, out_channels)
-            w = tf.get_variable("conv_%d/W" % i, w_shape, initializer=ortho_init(np.sqrt(2)))
-            b = tf.get_variable("conv_%d/b" % i, [out_channels], initializer=tf.constant_initializer(0.0))
-#            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i), )
-#            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
+        with tf.variable_scope("model"):
 
-            cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
-#            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
-#                outputs=cur_layer, strides=stride, padding="VALID")
-            cur_layer = tf.nn.relu(cur_layer)
-            prev_layer = cur_layer
+            #convs
+            channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
+            prev_layer = self.x_batch
+            for i in xrange(c.NUM_CONV_LAYERS):
+                in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
+                kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
+                w_shape = kernel_size + (in_channels, out_channels)
+                w = tf.get_variable("conv_%d/W" % i, w_shape, initializer=ortho_init(np.sqrt(2)))
+                b = tf.get_variable("conv_%d/b" % i, [out_channels], initializer=tf.constant_initializer(0.0))
+    #            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i), )
+    #            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
 
-        #fully connected layer (last shared)
-        conv_shape = cur_layer.shape
-        flat_sz = conv_shape[1].value * conv_shape[2].value * conv_shape[3].value
-        flattened = tf.reshape(cur_layer, shape=[-1, flat_sz])
+                cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
+    #            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
+    #                outputs=cur_layer, strides=stride, padding="VALID")
+                cur_layer = tf.nn.relu(cur_layer)
+                prev_layer = cur_layer
 
-        fc_layer = self.fully_connected_layer(flattened, flat_sz, c.FC_SIZE, 'fc_layer', init_scale=np.sqrt(2))
-        fc_layer = tf.nn.relu(fc_layer)
+            #fully connected layer (last shared)
+            conv_shape = cur_layer.shape
+            flat_sz = conv_shape[1].value * conv_shape[2].value * conv_shape[3].value
+            flattened = tf.reshape(cur_layer, shape=[-1, flat_sz])
 
-        #policy output layer
-        self.policy_logits = self.fully_connected_layer(fc_layer, c.FC_SIZE, self.num_actions, 'policy_logits')
-        self.policy_probs = tf.nn.softmax(self.policy_logits)
+            fc_layer = self.fully_connected_layer(flattened, flat_sz, c.FC_SIZE, 'fc_layer', init_scale=np.sqrt(2))
+            fc_layer = tf.nn.relu(fc_layer)
 
-        #value output layer
-        self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
-        self.value_preds = tf.squeeze(self.value_preds)
+            #policy output layer
+            self.policy_logits = self.fully_connected_layer(fc_layer, c.FC_SIZE, self.num_actions, 'policy_logits')
+            self.policy_probs = tf.nn.softmax(self.policy_logits)
 
-#        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
-#        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
+            #value output layer
+            self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
+            self.value_preds = tf.squeeze(self.value_preds)
+
+    #        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
+    #        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
+
+            params = tf.trainable_variables() #"model" scope's variables
+
+
+        #intentionally defined outside of scope.. Loss calcluations:
 
         logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken)
 
@@ -104,12 +112,16 @@ class ACKTRModel:
         vf_fisher_loss = -1.0 * tf.reduce_mean(tf.pow(self.value_preds - tf.stop_gradient(sample_net), 2))
         joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
 
-        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
-                momentum=0.9, kfac_update=1, epsilon=0.01,
-                stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
 
-        params = find_trainable_variables("model")
+        #Gradients and updates:
+
+        #params = find_trainable_variables("model")
         grads = tf.gradients(self.total_loss, params)
+
+        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
+                    momentum=0.9, kfac_update=1, epsilon=0.01,
+                    stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
+
 
 #        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
 #            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
