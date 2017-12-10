@@ -108,8 +108,6 @@ class ACKTRModel:
         self.value_preds = vf[:, 0]
         self.action_preds = sample(pi)
 
-        params = tf.trainable_variables() #"model" scope's variables
-
         self.A = tf.placeholder(tf.int32)
         self.ADV = tf.placeholder(tf.float32)
         self.R = tf.placeholder(tf.float32)
