@@ -14,7 +14,7 @@ from atari_wrapper import EpisodicLifeEnv
 #     def __init__(self, args):
 #         self.args = args
 #         self.env = get_env(self.args.env,
-#                            results_save_dir=self.args.results_dir,
+#                            results_save_dir=self.args.save_dir,
 #                            seed=self.args.seed,
 #                            num_envs=self.args.num_envs)
 #
@@ -141,7 +141,7 @@ from atari_wrapper import EpisodicLifeEnv
 #
 #         # The monitor won't be transformed if this script is killed early. In the
 #         # case that it is, run transform_monitor.py independently.
-#         transform_monitor(self.args.results_dir, self.args.env)
+#         transform_monitor(self.args.save_dir, self.args.env)
 
 
 def discount_with_dones(rewards, dones, gamma):
@@ -218,15 +218,13 @@ class Runner(object):
             mb_rewards[n] = rewards
         mb_rewards = mb_rewards.flatten()
         mb_actions = mb_actions.flatten()
-        mb_values = mb_values.flatten()
-        mb_masks = mb_masks.flatten()
         return mb_obs, mb_rewards, mb_actions
 
 def learn(args):
     tf.reset_default_graph()
 
     env = get_env(args.env,
-                  results_save_dir=args.results_dir,
+                  results_save_dir=args.save_dir,
                   seed=args.seed,
                   num_envs=args.num_envs)
 
@@ -237,8 +235,8 @@ def learn(args):
     enqueue_threads = agent.q_runner.create_threads(agent.sess, coord=coord, start=True)
     for update in xrange(int(args.num_steps // args.batch_size)):
         obs, rewards, actions = runner.run()
-        # masks not used
-        agent.train_step(obs, actions, rewards)
+        agent.train_step(obs, actions, rewards, env.num_steps)
+
         runner.global_step += 1
         print 'Train step %d' % runner.global_step
 
