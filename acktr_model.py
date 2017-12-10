@@ -61,6 +61,31 @@ class ACKTRModel:
             x = tf.reshape(x, [-1, nh])
             return x
 
+        def cat_entropy(logits):
+            a0 = logits - tf.reduce_max(logits, 1, keep_dims=True)
+            ea0 = tf.exp(a0)
+            z0 = tf.reduce_sum(ea0, 1, keep_dims=True)
+            p0 = ea0 / z0
+            return tf.reduce_sum(p0 * (tf.log(z0) - a0), 1)
+
+        def mse(pred, target):
+            return tf.square(pred - target) / 2.
+
+        def find_trainable_variables(key):
+            with tf.variable_scope(key):
+                return tf.trainable_variables()
+
+        class Scheduler(object):
+            def __init__(self, v, nvalues):
+                self.n = 0.
+                self.v = v
+                self.nvalues = nvalues
+
+            def value(self):
+                current_value = self.v * (1 - (self.n / self.nvalues))
+                self.n += 1.
+                return current_value
+
     #        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.learning_rate = tf.placeholder(dtype=tf.float32)
         self.x_batch = tf.placeholder(dtype=tf.uint8, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
@@ -77,11 +102,56 @@ class ACKTRModel:
             h3 = conv(h2, 'c3', nf=32, rf=3, stride=1, init_scale=np.sqrt(2))
             h3 = conv_to_fc(h3)
             h4 = fc(h3, 'fc1', nh=512, init_scale=np.sqrt(2))
-            self.pi = fc(h4, 'pi', self.num_actions, act=lambda x:x)
-            self.vf = fc(h4, 'v', 1, act=lambda x:x)
+            pi = fc(h4, 'pi', self.num_actions, act=lambda x:x)
+            vf = fc(h4, 'v', 1, act=lambda x:x)
 
-        self.value_preds = self.vf[:, 0]
-        self.action_preds = sample(self.pi)
+        self.value_preds = vf[:, 0]
+        self.action_preds = sample(pi)
+
+        params = tf.trainable_variables() #"model" scope's variables
+
+        self.A = tf.placeholder(tf.int32)
+        self.ADV = tf.placeholder(tf.float32)
+        self.R = tf.placeholder(tf.float32)
+
+        logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pi, labels=self.A)
+        self.logits = logits = pi
+
+        ##training loss
+        pg_loss = tf.reduce_mean(self.ADV * logpac)
+        entropy = tf.reduce_mean(cat_entropy(pi))
+        self.policy_loss = pg_loss - 0.01 * entropy
+        self.value_loss = tf.reduce_mean(mse(tf.squeeze(vf), self.R))
+        train_loss = pg_loss + 0.5 * self.value_loss
+
+        ##Fisher loss construction
+        self.pg_fisher = pg_fisher_loss = -tf.reduce_mean(logpac)
+        sample_net = vf + tf.random_normal(tf.shape(vf))
+        self.vf_fisher = vf_fisher_loss = - 1.0 * tf.reduce_mean(
+            tf.pow(vf - tf.stop_gradient(sample_net), 2))
+        self.joint_fisher = joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
+
+        self.params = params = find_trainable_variables("model")
+
+        self.grads_check = grads = tf.gradients(train_loss, params)
+
+
+
+        # with tf.device('/gpu:0'):
+        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
+                                                momentum=0.9, kfac_update=1, epsilon=0.01,
+                                                stats_decay=0.99, async=1, cold_iter=10,
+                                                max_grad_norm=0.5)
+
+        update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
+        # print params
+        # print grads
+        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads, params)))
+        self.lr = Scheduler(v=self.args.lr, nvalues=self.args.num_steps)
+
+        #summaries
+        # self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
+        # self.c_loss_summary = tf.summary.scalar("critic_loss", self.critic_loss)
 
         self.ep_reward = tf.placeholder(tf.float32)
         self.ep_reward_summary = tf.summary.scalar("episode_reward", self.ep_reward)
