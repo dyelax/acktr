@@ -148,7 +148,7 @@ class ACKTRModel:
         return tf.reduce_sum(p0 * (tf.log(z0) - a0), axis=1)
 
 
-    def value(self, s_batch):
+    def get_values(self, s_batch):
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
         return np.squeeze(v_s)
 
@@ -156,7 +156,7 @@ class ACKTRModel:
     def train_step(self, s_batch, a_batch, r_batch, env_steps):
         percent_done = float(env_steps) / (1.1 * self.args.num_steps)
 
-        v_s = self.value(s_batch)
+        v_s = self.get_values(s_batch)
 #        v_s_next = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_next_batch})
 #        v_s_next *= (1 - terminal_batch) #mask out preds for terminal states
 
