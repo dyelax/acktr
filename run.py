@@ -10,6 +10,15 @@ import constants as c
 
 from atari_wrapper import EpisodicLifeEnv
 
+
+def discount_with_dones(rewards, dones, gamma):
+    discounted = []
+    r = 0
+    for reward, done in zip(rewards[::-1], dones[::-1]):
+        r = reward + gamma * r * (1. - done)  # fixed off by one bug
+        discounted.append(r)
+    return discounted[::-1]
+
 class Runner:
     def __init__(self, args):
         self.args = args
@@ -109,13 +118,6 @@ class Runner:
         # #         batch_terminals[i, :] = env_terminals[:-1]
         #
         # THEIR DISCOUNT
-        def discount_with_dones(rewards, dones, gamma):
-            discounted = []
-            r = 0
-            for reward, done in zip(rewards[::-1], dones[::-1]):
-                r = reward + gamma * r * (1. - done)  # fixed off by one bug
-                discounted.append(r)
-            return discounted[::-1]
         #
         # # discount/bootstrap off value fn
         # for n, (rewards, dones, value) in enumerate(zip(batch_rewards, batch_terminals, values_of_next_states)):
