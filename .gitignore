@@ -1,5 +1,6 @@
 save/
 *.idea
+test.py
 
 # Baseline code
 acktr_baseline/
