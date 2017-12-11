@@ -62,6 +62,8 @@ class Runner:
 
                 self.agent.write_ep_reward_summary(infos[0]['ep_reward'], infos[0]['env_steps'])
 
+        batch_terminals.append(self.terminals)
+
         # Flipping from num_steps x num_envs to num_envs x num_steps
         #  (20 x 32 to 32 x 20)
         batch_states = np.array(batch_states).swapaxes(1, 0)
@@ -69,6 +71,7 @@ class Runner:
         batch_rewards = np.array(batch_rewards).swapaxes(1, 0)
         batch_terminals = np.array(batch_terminals).swapaxes(1, 0)
 
+        batch_terminals = batch_terminals[:, 1:]
 
         # Compute the discounted reward
         # NOTE: the discounted reward is computed over the num_steps
