@@ -70,7 +70,8 @@ class Runner:
 
         # Flipping from num_steps x num_envs to num_envs x num_steps
         #  (20 x 32 to 32 x 20)
-        batch_states = np.array(batch_states).swapaxes(1, 0)
+        batch_states = np.array(batch_states).swapaxes(1, 0).reshape(
+            (-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
         batch_actions = np.array(batch_actions).swapaxes(1, 0)
         batch_next_states = batch_next_states.swapaxes(1, 0)
         batch_rewards = np.array(batch_rewards).swapaxes(1, 0)
@@ -113,7 +114,7 @@ class Runner:
                 batch_rewards[i, :] = np.array(new_rewards[:-1])
                 batch_terminals[i, :] = terminals[:-1]
 
-        return (batch_states.reshape((self.args.batch_size, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS)),
+        return (batch_states,
                 batch_actions.flatten(),
                 batch_rewards.flatten(),
                 batch_next_states.reshape((self.args.batch_size, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS)),
