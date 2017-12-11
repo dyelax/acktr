@@ -47,7 +47,7 @@ class Runner:
             batch_terminals.append(np.copy(self.terminals))
             batch_actions.append(actions)
 
-            next_states, rewards, self.terminals, infos = self.env.step(actions)
+            self.states, rewards, self.terminals, infos = self.env.step(actions)
 
             batch_rewards.append(rewards)
 
@@ -62,13 +62,11 @@ class Runner:
 
                 self.agent.write_ep_reward_summary(infos[0]['ep_reward'], infos[0]['env_steps'])
 
-            self.states = next_states
-
         # Next state for each step in an env is the last state for that env in this batch
         batch_next_states = np.empty((num_steps, self.args.num_envs, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
         for i in xrange(num_steps):
             for j in xrange(self.args.num_envs):
-                batch_next_states[i, j] = next_states[j]
+                batch_next_states[i, j] = self.states[j]
 
         # Flipping from num_steps x num_envs to num_envs x num_steps
         #  (20 x 32 to 32 x 20)
