@@ -170,7 +170,7 @@ class ACKTRModel:
         k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
         advantage = np.reshape(advantage, [-1]) #turn into row vec
 
-        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op]
+        sess_args = [self.global_step, self.a_loss_summary, self.c_loss_summary, self.train_op]
         feed_dict = {self.x_batch: s_batch,
                     self.actor_labels: advantage,
                     self.critic_labels: k_step_return,
