@@ -191,12 +191,13 @@ class Runner:
 
         # TODO: Do we need q_runner here?
         while self.env.num_steps < self.args.num_steps:
-            self.global_step += 1
-            if self.args.train:
-                states, actions, rewards = self.get_batch()
-                self.agent.train_step(states, actions, rewards)
+            states, actions, rewards = self.get_batch()
 
-                print 'Train step %d' % self.global_step
+            if self.args.train:
+                self.agent.train_step(states, actions, rewards)
+                self.global_step += 1
+
+            print 'Train step %d' % self.global_step
 
         # Close the env and write monitor results to disk
         self.env.close()
