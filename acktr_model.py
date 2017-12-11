@@ -129,7 +129,7 @@ class ACKTRModel:
         self.optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum, norm_constraint=self.args.max_norm)
-        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
+        self.train_op = self.optimizer.minimize(self.total_loss, global_step=self.global_step)
 
         # TODO: is this return value necessary?
         # update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
