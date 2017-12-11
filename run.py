@@ -62,18 +62,11 @@ class Runner:
 
                 self.agent.write_ep_reward_summary(infos[0]['ep_reward'], infos[0]['env_steps'])
 
-        # Next state for each step in an env is the last state for that env in this batch
-        batch_next_states = np.empty((num_steps, self.args.num_envs, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
-        for i in xrange(num_steps):
-            for j in xrange(self.args.num_envs):
-                batch_next_states[i, j] = self.states[j]
-
         # Flipping from num_steps x num_envs to num_envs x num_steps
         #  (20 x 32 to 32 x 20)
         batch_states = np.array(batch_states).swapaxes(1, 0).reshape(
             (-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
         batch_actions = np.array(batch_actions).swapaxes(1, 0)
-        batch_next_states = batch_next_states.swapaxes(1, 0)
         batch_rewards = np.array(batch_rewards).swapaxes(1, 0)
         batch_terminals = np.array(batch_terminals).swapaxes(1, 0)
 
@@ -83,9 +76,7 @@ class Runner:
         #       rewards earlier get more "look ahead" reward added
         #       to them than later states
 
-        # getting next state for each env, which should be the same for any column
-        next_states = batch_next_states[:, 0]
-        values_of_next_states = self.agent.get_values(next_states)
+        values_of_next_states = self.agent.get_values(self.states)
         # looping over envs
         for i, (rewards, terminals) in enumerate(zip(batch_rewards, batch_terminals)):
             # appending value of next state to the rewards if episode hasn't ended
@@ -117,7 +108,6 @@ class Runner:
         return (batch_states,
                 batch_actions.flatten(),
                 batch_rewards.flatten(),
-                batch_next_states.reshape((self.args.batch_size, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS)),
                 batch_terminals.flatten())
 
 
@@ -127,11 +117,8 @@ class Runner:
         while self.env.num_steps < self.args.num_steps * 1.1:
             self.global_step += 1
             if self.args.train:
-                states, actions, rewards, next_states, terminals = self.get_batch()
-
-                self.agent.train_step(states,
-                                      actions,
-                                      rewards)
+                states, actions, rewards, terminals = self.get_batch()
+                self.agent.train_step(states, actions, rewards)
 
                 print 'Train step %d' % self.global_step
 
