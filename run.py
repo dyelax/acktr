@@ -40,7 +40,7 @@ class Runner:
 
             # Store the SARS
             # states, actions and terminals are appended before env.step and rewards after because
-            # everything should be relevant to the state (state was terminal and we took this action
+            # everything should be relative to the state (state was terminal and we took action
             # from it and that lead to getting reward).
             # TODO: These copies might not be necessary.
             batch_states.append(np.copy(self.states))
@@ -51,7 +51,7 @@ class Runner:
 
             batch_rewards.append(rewards)
 
-            # This will trigger when the 0th env has a "real done." ie a full episode has finished.
+            # This will trigger when the 0th env has finished a full episode.
             if infos[0]['real_done']:
                 print '-' * 30
                 print 'Episode:        ', infos[0]['num_eps']
