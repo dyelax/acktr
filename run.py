@@ -64,8 +64,7 @@ class Runner:
 
         # Flipping from num_steps x num_envs to num_envs x num_steps
         #  (20 x 32 to 32 x 20)
-        batch_states = np.array(batch_states).swapaxes(1, 0).reshape(
-            (-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
+        batch_states = np.array(batch_states).swapaxes(1, 0)
         batch_actions = np.array(batch_actions).swapaxes(1, 0)
         batch_rewards = np.array(batch_rewards).swapaxes(1, 0)
         batch_terminals = np.array(batch_terminals).swapaxes(1, 0)
@@ -76,36 +75,42 @@ class Runner:
         #       rewards earlier get more "look ahead" reward added
         #       to them than later states
 
+        # The value of the next_state for each env
         values_of_next_states = self.agent.get_values(self.states)
-        # looping over envs
-        for i, (rewards, terminals) in enumerate(zip(batch_rewards, batch_terminals)):
-            # appending value of next state to the rewards if episode hasn't ended
-            this_env_terminal = batch_terminals[i][-1]
-            if not this_env_terminal:
+        # Loop over envs
+        for i, (env_rewards, env_terminals) in enumerate(zip(batch_rewards, batch_terminals)):
+            # Append value of next state to the rewards if episode didn't end on the last step
+            env_last_terminal = batch_terminals[i, -1]
+            if not env_last_terminal:
                 v_s_next = values_of_next_states[i]
-                rewards = np.append(rewards, v_s_next)
-                terminals = np.append(terminals, 0)
+                env_rewards = np.append(env_rewards, v_s_next)
+                env_terminals = np.append(env_terminals, 0)
 
             new_rewards = []
             # TODO: They don't stop when they hit a terminal, but maybe we should
             # building up new_rewards in reverse order
-            r_d = 0
-            for j in reversed(xrange(len(rewards))):
-                r = rewards[j]
-                t = terminals[j]
-                r_d *= self.args.gamma * (1 - t)
-                r_d += r
-                new_rewards.append(r_d)
+            discounted_future_reward = 0
+            for j in reversed(xrange(len(env_rewards))):
+                reward = env_rewards[j]
+                terminal = env_terminals[j]
+                discounted_future_reward *= self.args.gamma * (1 - terminal)
+                discounted_future_reward += reward
+                new_rewards.append(discounted_future_reward)
 
             # built new_rewards up in reverse order, so now put it back in time order
             new_rewards.reverse()
 
             # removing extra entry for value of next state (when not terminal)
-            if not this_env_terminal:
+            if not env_last_terminal:
                 batch_rewards[i, :] = np.array(new_rewards[:-1])
-                batch_terminals[i, :] = terminals[:-1]
+                batch_terminals[i, :] = env_terminals[:-1]
 
-        return batch_states, batch_actions.flatten(), batch_rewards.flatten()
+        # Reshape into (batch_size,) + element.shape
+        batch_states = batch_states.reshape((-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
+        batch_actions = batch_actions.flatten()
+        batch_rewards = batch_rewards.flatten()
+
+        return batch_states, batch_actions, batch_rewards
 
 
     def run(self):
