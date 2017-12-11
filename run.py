@@ -105,10 +105,7 @@ class Runner:
                 batch_rewards[i, :] = np.array(new_rewards[:-1])
                 batch_terminals[i, :] = terminals[:-1]
 
-        return (batch_states,
-                batch_actions.flatten(),
-                batch_rewards.flatten(),
-                batch_terminals.flatten())
+        return batch_states, batch_actions.flatten(), batch_rewards.flatten()
 
 
     def run(self):
@@ -117,7 +114,7 @@ class Runner:
         while self.env.num_steps < self.args.num_steps * 1.1:
             self.global_step += 1
             if self.args.train:
-                states, actions, rewards, terminals = self.get_batch()
+                states, actions, rewards = self.get_batch()
                 self.agent.train_step(states, actions, rewards)
 
                 print 'Train step %d' % self.global_step
