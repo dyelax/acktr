@@ -120,10 +120,14 @@ class ACKTRModel:
 
 
         #tf.contrib.kfac (TF KFAC)
-        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
+        # optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
+        #    cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
+        #    layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
+        # self.train_op = optimizer.minimize(self.total_loss)
+        self.optim = optim = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
-        self.train_op = optimizer.minimize(self.total_loss)
+        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
 
         # Thier KFAC
         # TODO: is this return value necessary?
@@ -132,6 +136,8 @@ class ACKTRModel:
         #             stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
         # update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
         # self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
+
+
 
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
