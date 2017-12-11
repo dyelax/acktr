@@ -5,19 +5,8 @@ from utils import get_env, parse_args, transform_monitor, show_state
 
 from random_agent import RandomAgent
 from acktr_model import ACKTRModel
-import collections
 import constants as c
 
-from atari_wrapper import EpisodicLifeEnv
-
-
-def discount_with_dones(rewards, dones, gamma):
-    discounted = []
-    r = 0
-    for reward, done in zip(rewards[::-1], dones[::-1]):
-        r = reward + gamma * r * (1. - done)  # fixed off by one bug
-        discounted.append(r)
-    return discounted[::-1]
 
 class Runner:
     def __init__(self, args):
@@ -87,7 +76,6 @@ class Runner:
         # NOTE: the discounted reward is computed over the num_steps
         #       rewards earlier get more "look ahead" reward added
         #       to them than later states
-
         # The value of the next_state for each env
         values_of_next_states = self.agent.get_values(self.states)
         # Loop over envs
@@ -118,75 +106,11 @@ class Runner:
                 batch_rewards[i, :] = np.array(new_rewards[:-1])
                 batch_terminals[i, :] = env_terminals[:-1]
 
-        # # THEIR DISCOUNT
-        #
-        # # discount/bootstrap off value fn
-        # for n, (rewards, dones, value) in enumerate(zip(batch_rewards, batch_terminals, values_of_next_states)):
-        #     rewards = rewards.tolist()
-        #     dones = dones.tolist()
-        #     if dones[-1] == 0:
-        #         rewards = discount_with_dones(rewards + [value], dones + [0], self.args.gamma)[:-1]
-        #     else:
-        #         rewards = discount_with_dones(rewards, dones, self.args.gamma)
-        #     batch_rewards[n] = rewards
-
         # Reshape into (batch_size,) + element.shape
         batch_states = batch_states.reshape((-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
         batch_actions = batch_actions.flatten()
         batch_rewards = batch_rewards.flatten()
 
-        # num_steps = self.args.batch_size // self.args.num_envs
-        # mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
-        # for n in range(num_steps):
-        #     actions = self.agent.get_actions(self.states)
-        #     values = self.agent.get_values(self.states)
-        #     mb_obs.append(np.copy(self.states))
-        #     mb_actions.append(actions)
-        #     mb_values.append(values)
-        #     mb_dones.append(self.terminals)
-        #     obs, rewards, dones, infos = self.env.step(actions)
-        #     self.terminals = dones
-        #     # for n, done in enumerate(dones):
-        #     #     if done:
-        #     #         self.obs[n] = self.obs[n] * 0
-        #     self.states = obs
-        #     # self.obs = obs
-        #     mb_rewards.append(rewards)
-        #
-        #     # This will trigger when the 0th env has a "real done." ie a full episode has finished.
-        #     if infos[0]['real_done']:
-        #         print '-' * 30
-        #         print 'Episode:        ', infos[0]['num_eps']
-        #         print 'Train steps:    ', self.global_step
-        #         print 'Env steps:      ', self.env.num_steps
-        #         print 'Episode reward: ', infos[0]['ep_reward']
-        #         print '-' * 30
-        #
-        #         self.agent.write_ep_reward_summary(infos[0]['ep_reward'], infos[0]['env_steps'])
-        #
-        # mb_dones.append(self.terminals)
-        # # batch of steps to batch of rollouts
-        # mb_obs = np.asarray(mb_obs, dtype=np.uint8).swapaxes(1, 0).reshape((-1, 84, 84, 4))
-        # mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
-        # mb_actions = np.asarray(mb_actions, dtype=np.int32).swapaxes(1, 0)
-        # mb_values = np.asarray(mb_values, dtype=np.float32).swapaxes(1, 0)
-        # mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(1, 0)
-        # mb_masks = mb_dones[:, :-1]
-        # mb_dones = mb_dones[:, 1:]
-        # last_values = self.agent.get_values(self.states).tolist()
-        # # discount/bootstrap off value fn
-        # for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
-        #     rewards = rewards.tolist()
-        #     dones = dones.tolist()
-        #     if dones[-1] == 0:
-        #         rewards = discount_with_dones(rewards + [value], dones + [0], self.args.gamma)[:-1]
-        #     else:
-        #         rewards = discount_with_dones(rewards, dones, self.args.gamma)
-        #     mb_rewards[n] = rewards
-        # mb_rewards = mb_rewards.flatten()
-        # mb_actions = mb_actions.flatten()
-
-        # return mb_obs, mb_actions, mb_rewards
         return batch_states, batch_actions, batch_rewards
 
 
@@ -201,7 +125,7 @@ class Runner:
             states, actions, rewards = self.get_batch()
 
             if self.args.train:
-                self.agent.train_step(states, actions, rewards)
+                self.agent.train_step(states, actions, rewards, self.env.num_steps)
                 self.global_step += 1
 
             print 'Train step %d' % self.global_step
