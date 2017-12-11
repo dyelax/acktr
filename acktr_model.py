@@ -39,7 +39,7 @@ class ACKTRModel:
 #        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
 #        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
         outputs = tf.matmul(inputs, w) + b
-        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
+#        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
         return outputs
 
 
@@ -51,7 +51,7 @@ class ACKTRModel:
         self.actor_labels = tf.placeholder(dtype=tf.float32)
         self.critic_labels = tf.placeholder(dtype=tf.float32)
 
-        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
+#        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
         with tf.variable_scope("model"):
 
@@ -68,8 +68,8 @@ class ACKTRModel:
     #            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
 
                 cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
-                self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
-                                                        outputs=cur_layer, strides=stride, padding="VALID")
+    #            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
+    #                outputs=cur_layer, strides=stride, padding="VALID")
                 cur_layer = tf.nn.relu(cur_layer)
                 prev_layer = cur_layer
 
@@ -89,8 +89,8 @@ class ACKTRModel:
             self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
             self.value_preds = tf.squeeze(self.value_preds)
 
-            self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
-            self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
+    #        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
+    #        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
 
             params = tf.trainable_variables() #"model" scope's variables
 
@@ -118,26 +118,20 @@ class ACKTRModel:
         #params = find_trainable_variables("model")
         grads = tf.gradients(self.total_loss, params)
 
+        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
+                    momentum=0.9, kfac_update=1, epsilon=0.01,
+                    stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
 
-        #tf.contrib.kfac (TF KFAC)
-        # optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
-        #    cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
-        #    layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
-        # self.train_op = optimizer.minimize(self.total_loss)
-        self.optim = optim = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
-           cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
-           layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
-        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
 
-        # Thier KFAC
+#        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
+#            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
+#            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
+
+#        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
+
         # TODO: is this return value necessary?
-        # self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
-        #             momentum=0.9, kfac_update=1, epsilon=0.01,
-        #             stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
-        # update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
-        # self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
-
-
+        update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
+        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
 
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
