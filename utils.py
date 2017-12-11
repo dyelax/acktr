@@ -164,8 +164,7 @@ def get_env(env_name, results_save_dir, seed, num_envs):
             sub_env.seed(seed + env_num)
             if results_save_dir and env_num == 0:
                 sub_env = gym.wrappers.Monitor(sub_env, results_save_dir)
-            # sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
-            sub_env = wrap_deepmind(sub_env, frame_stack=True)
+            sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
 
             return sub_env
 

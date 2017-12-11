@@ -57,7 +57,7 @@ class ACKTRModel:
 
             #convs
             channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
-            prev_layer = tf.cast(self.x_batch, tf.float32) / 255. # TODO: Do this frame scaling in the env wrapper
+            prev_layer = tf.cast(self.x_batch, tf.float32)
             for i in xrange(c.NUM_CONV_LAYERS):
                 in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
                 kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
