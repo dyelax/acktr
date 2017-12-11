@@ -111,7 +111,7 @@ class Runner:
     def run(self):
         print '-' * 30
 
-        while self.env.num_steps < self.args.num_steps * 1.1:
+        while self.env.num_steps < self.args.num_steps:
             self.global_step += 1
             if self.args.train:
                 states, actions, rewards = self.get_batch()
