@@ -1,8 +1,9 @@
-save/results/ours/
-save/summaries/
-save/models/
+save/
 *.idea
-*.xml
+test.py
+
+# Baseline code
+acktr_baseline/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

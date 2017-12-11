@@ -50,7 +50,26 @@ class FireResetEnv(gym.Wrapper):
             self.env.reset(**kwargs)
         return obs
 
-# TODO: Does this not work for Pong? (no "lives")
+
+def get_episodic_life_env(env):
+    """
+    Helper to unwrap the EpisodicLifeEnv contained in env for accessing
+    :param env:
+    :return:
+    """
+    new_env = env
+
+    try:
+        while not isinstance(new_env, EpisodicLifeEnv):
+            new_env = new_env.env
+    except AttributeError:
+        print 'No episodic life wrapper for env.'
+        print env
+        return env
+
+    return new_env
+
+
 class EpisodicLifeEnv(gym.Wrapper):
     def __init__(self, env):
         """Make end-of-life == end-of-episode, but only reset on true game over.
@@ -211,13 +230,11 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
-
+    if scale:
+        env = ScaledFloatFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
         env = FrameStack(env, c.IN_CHANNELS)
-    if scale:
-        env = ScaledFloatFrame(env)
-
     return env
 
