@@ -29,7 +29,9 @@ class Runner:
 
         self.global_step = 0
 
-        self.agent = ACKTRModel(tf.Session(), self.args, self.env.action_space.n)
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        self.agent = ACKTRModel(tf.Session(config=config), self.args, self.env.action_space.n)
 
         # The last state for each env
         self.states = self.env.reset()
