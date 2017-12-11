@@ -53,11 +53,11 @@ class ACKTRModel:
 
 #        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
-        with tf.variable_scope("model"):
+        with tf.variable_scope("model", reuse=False):
 
             #convs
             channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
-            prev_layer = self.x_batch
+            prev_layer = tf.cast(self.x_batch, tf.float32) / 255.
             for i in xrange(c.NUM_CONV_LAYERS):
                 in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
                 kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
@@ -99,8 +99,8 @@ class ACKTRModel:
 
         logpac = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.policy_logits, labels=self.actions_taken)
 
-        self.actor_loss = tf.reduce_mean(logpac * self.actor_labels)
-        self.critic_loss = tf.reduce_mean(tf.square(self.critic_labels - self.value_preds)) / 2.0
+        self.actor_loss = tf.reduce_mean(self.actor_labels * logpac)
+        self.critic_loss = tf.reduce_mean(tf.square(self.value_preds - self.critic_labels)) / 2.0
 
         self.entropy_regularization = tf.reduce_mean(self.calculate_entropy(self.policy_logits))
         self.actor_loss = self.actor_loss - c.ENTROPY_REGULARIZATION_WEIGHT * self.entropy_regularization
@@ -222,7 +222,5 @@ if __name__ == '__main__':
         model.train_step(np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
                         np.random.randint(num_actions, size=batch_size),
                         np.random.rand(batch_size),
-                        np.random.rand(batch_size,c.IN_WIDTH,c.IN_HEIGHT,c.IN_CHANNELS),
-                        np.random.randint(2, size=batch_size),
                         1)
         print(model.get_actions(np.random.rand(1,84,84,4)))
