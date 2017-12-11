@@ -101,6 +101,10 @@ def parse_args():
                         help='The momentum term for KFAC.',
                         default=0.9,
                         type=float)
+    parser.add_argument('--max_norm',
+                        help='The max_grad_norm term for KFAC.',
+                        default=0.5,
+                        type=float)
     parser.add_argument('--drop_rate',
                         help='The dropout rate',
                         default=0.0,

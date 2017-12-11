@@ -44,7 +44,7 @@ class ACKTRModel:
 
 
     def define_graph(self):
-#        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.learning_rate = tf.placeholder(dtype=tf.float32)
         self.x_batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
         self.actions_taken = tf.placeholder(dtype=tf.int32)
@@ -124,12 +124,12 @@ class ACKTRModel:
 
 
         # momentum = 0.9 is correct. Not sure is rest are right compared to above. 
-        # (cov_ema_decay = stats_decay? rest?)
+        # (cov_ema_decay = stats_decay? damping = ? rest of params from above?)
         # maybe we should be minimizing joint_fisher_loss?
         optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
-           layer_collection=self.layer_collection, momentum=self.args.kfac_momentum)
-        self.train_op = optimizer.minimize(self.total_loss)
+           layer_collection=self.layer_collection, momentum=self.args.kfac_momentum, norm_constraint=self.args.max_norm)
+        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
 
         # TODO: is this return value necessary?
         # update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
