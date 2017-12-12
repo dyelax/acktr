@@ -12,7 +12,7 @@ class Runner:
     def __init__(self, args):
         self.args = args
         self.env = get_env(self.args.env,
-                           results_save_dir=self.args.save_dir,
+                           results_save_dir=self.args.results_save_dir,
                            seed=self.args.seed,
                            num_envs=self.args.num_envs)
 
@@ -138,7 +138,7 @@ class Runner:
 
         # The monitor won't be transformed if this script is killed early. In the
         # case that it is, run transform_monitor.py independently.
-        transform_monitor(self.args.save_dir, self.args.env)
+        transform_monitor(self.args.results_save_dir, self.args.env)
 
 
 if __name__ == '__main__':

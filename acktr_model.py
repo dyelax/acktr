@@ -30,7 +30,7 @@ class ACKTRModel:
                 self.saver.restore(self.sess, check_point.model_checkpoint_path)
 
         #set up new writer
-        self.summary_writer = tf.summary.FileWriter(self.args.save_dir, self.sess.graph)
+        self.summary_writer = tf.summary.FileWriter(self.args.summary_save_dir, self.sess.graph)
 
 
     def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer', init_scale=1.0):
@@ -181,7 +181,7 @@ class ACKTRModel:
             self.summary_writer.add_summary(c_summary, global_step=step)
 
         if (step - 1) % self.args.model_save_freq == 0:
-            self.saver.save(self.sess, os.path.join(self.args.save_dir, 'model'), global_step=step)
+            self.saver.save(self.sess, os.path.join(self.args.model_save_dir, 'model'), global_step=step)
 
         return step
 

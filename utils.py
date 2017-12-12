@@ -121,6 +121,9 @@ def parse_args():
 
     # Create save directories if they don't exist
     get_dir(args.save_dir)
+    args.results_save_dir = get_dir(join(args.save_dir, 'results'))
+    args.model_save_dir = get_dir(join(args.save_dir, 'models'))
+    args.summary_save_dir = get_dir(join(args.save_dir, 'summaries'))
 
     # Multiply num_steps by 1.1 because that's what baselines does for plotting.
     # I think this is so there's always an episode that ends after the intended num_steps so the
