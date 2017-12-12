@@ -75,7 +75,7 @@ def main():
     parser.add_argument('--ours_dirs',
                         help='List of log directories for our ACKTR implementation',
                         nargs = '*',
-                        default=['./save/ours/pong/final/*'])
+                        default=['./save/ours/pong/final/*/results'])
                         # default=['./save/results/ours/breakout/*'])
     parser.add_argument('--acktr_dirs',
                         help='List of log directories for the OpenAI Baselines ACKTR implementation',
