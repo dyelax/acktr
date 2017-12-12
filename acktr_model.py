@@ -101,7 +101,8 @@ class ACKTRModel:
         self.optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
            cov_ema_decay=self.args.moving_avg_decay, damping=self.args.damping_lambda,
            layer_collection=self.layer_collection, momentum=self.args.kfac_momentum, norm_constraint=self.args.max_norm)
-        self.train_op = self.optimizer.minimize(self.total_loss, global_step=self.global_step)
+        self.min_op = self.optimizer.minimize(self.total_loss, global_step=self.global_step)
+        self.train_op = tf.group(self.min_op, self.optimizer.cov_update_op)
 
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
@@ -135,7 +136,7 @@ class ACKTRModel:
         k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
         advantage = np.reshape(advantage, [-1]) #turn into row vec
 
-        sess_args = [self.global_step, self.a_loss_summary, self.c_loss_summary, self.train_op, self.optimizer.cov_update_op]
+        sess_args = [self.global_step, self.a_loss_summary, self.c_loss_summary, self.train_op]
         feed_dict = {self.x_batch: s_batch,
                     self.actor_labels: advantage,
                     self.critic_labels: k_step_return,
@@ -143,8 +144,8 @@ class ACKTRModel:
                     self.learning_rate: self.args.lr * (1 - percent_done)}
         step, a_summary, c_summary, _, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
-        if (step - 1) % 100 == 0:
-            self.sess.run(self.optimizer.inv_update_op, feed_dict=feed_dict)
+        # if (step - 1) % 100 == 0:
+        #     self.sess.run(self.optimizer.inv_update_op, feed_dict=feed_dict)
 
         if (step - 1) % self.args.summary_save_freq == 0:
             self.summary_writer.add_summary(a_summary, global_step=step)
