@@ -71,8 +71,8 @@ def parse_args():
     # Paths
     parser.add_argument('--save_dir',
                         help='Output directory for results',
-                        default=join('save', 'results', 'ours', 'pong', date))
-                        # default=join('save', 'results', 'ours', 'breakout', date))
+                        default=join('save', 'ours', 'pong', date))
+                        # default=join('save', 'ours', 'breakout', date))
     parser.add_argument('--model_load_dir',
                         help='Directory of the model you want to load.')
 
