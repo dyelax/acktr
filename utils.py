@@ -71,8 +71,8 @@ def parse_args():
     # Paths
     parser.add_argument('--save_dir',
                         help='Output directory for results',
-                        default=join('save', 'results', 'ours', 'pong', date))
-                        # default=join('save', 'results', 'ours', 'breakout', date))
+                        default=join('save', 'ours', 'pong', date))
+                        # default=join('save', 'ours', 'breakout', date))
     parser.add_argument('--model_load_dir',
                         help='Directory of the model you want to load.')
 
@@ -125,6 +125,9 @@ def parse_args():
 
     # Create save directories if they don't exist
     get_dir(args.save_dir)
+    args.results_save_dir = get_dir(join(args.save_dir, 'results'))
+    args.model_save_dir = get_dir(join(args.save_dir, 'models'))
+    args.summary_save_dir = get_dir(join(args.save_dir, 'summaries'))
 
     # Multiply num_steps by 1.1 because that's what baselines does for plotting.
     # I think this is so there's always an episode that ends after the intended num_steps so the
@@ -159,17 +162,23 @@ def get_env(env_name, results_save_dir, seed, num_envs):
     :return: The initialized gym environment.
     """
 
-    # Create the 32 environments to parallize
+    # Create the 32 environments to parallelize
     envs = []
     def make_sub_env_creator(env_num):
         """ Returns a function that creates an event. """
         def sub_env_creator():
             sub_env = make_atari(env_name)
             sub_env.seed(seed + env_num)
-            if results_save_dir and env_num == 0:
+
+            if env_num == 0:
+                # Wrap first env in default monitor for video output
+                # Results will be transformed into baselines monitor style at the end of the run
                 sub_env = gym.wrappers.Monitor(sub_env, results_save_dir)
-            # sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
-            sub_env = wrap_deepmind(sub_env, frame_stack=True)
+            else:
+                # Wrap every other env in the baselines monitor for equivalent plotting.
+                sub_env = Monitor(sub_env, join(results_save_dir, str(env_num)))
+
+            sub_env = wrap_deepmind(sub_env, frame_stack=True, scale=True)
 
             return sub_env
 
