@@ -30,7 +30,7 @@ class ACKTRModel:
                 self.saver.restore(self.sess, check_point.model_checkpoint_path)
 
         #set up new writer
-        self.summary_writer = tf.summary.FileWriter(self.args.save_dir, self.sess.graph)
+        self.summary_writer = tf.summary.FileWriter(self.args.summary_save_dir, self.sess.graph)
 
 
     def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer', init_scale=1.0):
@@ -57,7 +57,7 @@ class ACKTRModel:
 
             #convs
             channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
-            prev_layer = tf.cast(self.x_batch, tf.float32) / 255. # TODO: Do this frame scaling in the env wrapper
+            prev_layer = tf.cast(self.x_batch, tf.float32)
             for i in xrange(c.NUM_CONV_LAYERS):
                 in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
                 kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
@@ -186,7 +186,7 @@ class ACKTRModel:
             self.summary_writer.add_summary(c_summary, global_step=step)
 
         if (step - 1) % self.args.model_save_freq == 0:
-            self.saver.save(self.sess, os.path.join(self.args.save_dir, 'model'), global_step=step)
+            self.saver.save(self.sess, os.path.join(self.args.model_save_dir, 'model'), global_step=step)
 
         return step
 
