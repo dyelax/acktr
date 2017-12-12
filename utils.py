@@ -91,7 +91,7 @@ def parse_args():
                         type=float)
     parser.add_argument('--damping_lambda',
                         help='The damping factor for KFAC.',
-                        default=0.0,
+                        default=0.0001,
                         type=float)
     parser.add_argument('--moving_avg_decay',
                         help='The decay factor for the moving average in KFAC.',
