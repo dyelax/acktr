@@ -142,7 +142,7 @@ class ACKTRModel:
                     self.critic_labels: k_step_return,
                     self.actions_taken: a_batch,
                     self.learning_rate: self.args.lr * (1 - percent_done)}
-        step, a_summary, c_summary, _, _ = self.sess.run(sess_args, feed_dict=feed_dict)
+        step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
         # if (step - 1) % 100 == 0:
         #     self.sess.run(self.optimizer.inv_update_op, feed_dict=feed_dict)
