@@ -87,11 +87,11 @@ def parse_args():
                         type=int)
     parser.add_argument('--lr',
                         help='Learning rate.',
-                        default=0.001,
+                        default=0.25,
                         type=float)
     parser.add_argument('--damping_lambda',
                         help='The damping factor for KFAC.',
-                        default=0.0001,
+                        default=0.0,
                         type=float)
     parser.add_argument('--moving_avg_decay',
                         help='The decay factor for the moving average in KFAC.',
@@ -100,10 +100,6 @@ def parse_args():
     parser.add_argument('--kfac_momentum',
                         help='The momentum term for KFAC.',
                         default=0.9,
-                        type=float)
-    parser.add_argument('--max_norm',
-                        help='The max_grad_norm term for KFAC.',
-                        default=0.5,
                         type=float)
     parser.add_argument('--drop_rate',
                         help='The dropout rate',
