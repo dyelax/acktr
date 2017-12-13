@@ -117,6 +117,10 @@ class Runner:
     def run(self):
         print '-' * 30
 
+        # TODO: Figure out why q_runner is so important
+        coord = tf.train.Coordinator()
+        enqueue_threads = self.agent.q_runner.create_threads(self.agent.sess, coord=coord, start=True)
+
         while self.env.num_steps < self.args.num_steps:
             states, actions, rewards = self.get_batch()
 
@@ -125,6 +129,9 @@ class Runner:
                 self.global_step += 1
 
             print 'Train step %d' % self.global_step
+
+        coord.request_stop()
+        coord.join(enqueue_threads)
 
         # Close the env and write monitor results to disk
         self.env.close()
