@@ -4,12 +4,14 @@ import argparse
 import numpy as np
 from glob import glob
 import matplotlib
+import os
 matplotlib.use('TkAgg') # Can change to 'Agg' for non-interactive mode
 
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 
 from monitor import load_results
+from utils import get_dir
 
 EPISODES_WINDOW = 10
 COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
@@ -72,10 +74,14 @@ def plot_results(dirs, num_timesteps, color, label):
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--save_path',
+                        help='The path to save the figure to',
+                        default='./save/presentation/plots/pong.png')
+                        # default='./save/presentation/plots/breakout.png')
     parser.add_argument('--ours_dirs',
                         help='List of log directories for our ACKTR implementation',
                         nargs = '*',
-                        default=['./save/ours/pong/final/*/results'])
+                        default=['./save/ours/pong/final-old/*'])
                         # default=['./save/results/ours/breakout/*'])
     parser.add_argument('--acktr_dirs',
                         help='List of log directories for the OpenAI Baselines ACKTR implementation',
@@ -108,8 +114,11 @@ def main():
     parser.add_argument('--title', help = 'Title of plot', default = 'Pong')
     args = parser.parse_args()
 
-    plt.figure(figsize=(8, 2))
+    get_dir(os.path.dirname(args.save_path))
+
+    plt.figure(figsize=(16, 9))
     plt.xlim(0, args.num_timesteps)
+    plt.xticks(range(1000000, 11000000 , 1000000), [str(i) + 'M' for i in range(1, 11)])
     plt.title(args.title)
     plt.xlabel("Timesteps")
     plt.ylabel("Episode Rewards")
@@ -134,7 +143,9 @@ def main():
     legend.get_frame().set_alpha(0.5)
 
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+
+    plt.savefig(args.save_path)
 
 if __name__ == '__main__':
     main()
