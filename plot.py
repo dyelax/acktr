@@ -82,7 +82,7 @@ def main():
                         help='List of log directories for our ACKTR implementation',
                         nargs = '*',
                         # default=['./save/ours/pong/final-old/*'])
-                        default=['./save/results/ours/breakout/final-old/*'])
+                        default=['./save/ours/breakout/final-old/*'])
     parser.add_argument('--acktr_dirs',
                         help='List of log directories for the OpenAI Baselines ACKTR implementation',
                         nargs = '*',
