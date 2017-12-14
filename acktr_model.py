@@ -150,7 +150,7 @@ class ACKTRModel:
 
     def get_values(self, s_batch):
         v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
-        return np.squeeze(v_s)
+        return v_s
 
 
     def train_step(self, s_batch, a_batch, r_batch, env_steps):
