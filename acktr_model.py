@@ -185,24 +185,21 @@ class ACKTRModel:
 
         return step
 
-
-    # TODO later: increase temp of softmax over time?
-    def get_actions_softmax(self, states):
-        '''
+    def get_actions(self, states):
+        """
         Predict all Q values for a state -> softmax dist -> sample from dist
-        '''
+
+        :param states: A batch of states from the environment.
+
+        :return: A list of the action for each state
+        """
+        # TODO: Increase temp of softmax over time?
         feed_dict = {self.x_batch: states}
         policy_probs = self.sess.run(self.policy_probs, feed_dict=feed_dict)
         # policy_probs = np.squeeze(policy_probs)
         actions = np.array([np.random.choice(len(state_probs), p=state_probs) for state_probs in policy_probs])
         return actions
 
-    def get_actions(self, states):
-        feed_dict = {self.x_batch: states}
-        policy_logits = self.sess.run(self.policy_logits, feed_dict=feed_dict)
-        policy_logits = policy_logits
-        noise = np.random.rand(*policy_logits.shape)
-        return np.argmax(policy_logits - np.log(-np.log(noise)), axis=1)
 
     def write_ep_reward_summary(self, ep_reward, steps):
         summary = self.sess.run(self.ep_reward_summary,

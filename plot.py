@@ -76,28 +76,28 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--save_path',
                         help='The path to save the figure to',
-                        # default='./save/presentation/plots/pong.png')
-                        default='./save/presentation/plots/breakout.png')
+                        default='./save/presentation/plots/pong.png')
+                        # default='./save/presentation/plots/breakout.png')
     parser.add_argument('--ours_dirs',
                         help='List of log directories for our ACKTR implementation',
                         nargs = '*',
-                        # default=['./save/ours/pong/final-old/*'])
-                        default=['./save/ours/breakout/final-old/*/results'])
+                        default=['./save/ours/pong/softmax/*/results'])
+                        # default=['./save/ours/breakout/final-old/*/results'])
     parser.add_argument('--acktr_dirs',
                         help='List of log directories for the OpenAI Baselines ACKTR implementation',
                         nargs = '*',
-                        # default=['./save/baselines/pong/acktr/*'])
-                        default=['./save/baselines/breakout/acktr/*'])
+                        default=['./save/baselines/pong/acktr/*'])
+                        # default=['./save/baselines/breakout/acktr/*'])
     parser.add_argument('--trpo_dirs',
                         help='List of log directories for the OpenAI Baselines TRPO implementation',
                         nargs = '*',
-                        # default=['./save/baselines/pong/trpo/*'])
-                        default=['./save/baselines/breakout/trpo/*'])
+                        default=['./save/baselines/pong/trpo/*'])
+                        # default=['./save/baselines/breakout/trpo/*'])
     parser.add_argument('--a2c_dirs',
                         help='List of log directories for the OpenAI Baselines A2C implementation',
                         nargs = '*',
-                        # default=['./save/baselines/pong/a2c/*'])
-                        default=['./save/baselines/breakout/a2c/*'])
+                        default=['./save/baselines/pong/a2c/*'])
+                        # default=['./save/baselines/breakout/a2c/*'])
     parser.add_argument('--ours_color',
                         help='The color with which to plot our ACKTR results',
                         default='magenta')
@@ -111,8 +111,8 @@ def main():
                         help='The color with which to plot the OpenAI Baselines A2C results',
                         default='orange')
     parser.add_argument('--num_timesteps', type=int, default=int(10e6))
-    # parser.add_argument('--title', help = 'Title of plot', default = 'Pong')
-    parser.add_argument('--title', help = 'Title of plot', default = 'Breakout')
+    parser.add_argument('--title', help = 'Title of plot', default = 'Pong')
+    # parser.add_argument('--title', help = 'Title of plot', default = 'Breakout')
     args = parser.parse_args()
 
     get_dir(os.path.dirname(args.save_path))
