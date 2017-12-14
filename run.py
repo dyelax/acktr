@@ -35,7 +35,8 @@ class Runner:
         num_steps = self.args.batch_size // self.args.num_envs
         for step_num in xrange(num_steps):
             # Pick an action and perform it in the envs
-            actions = self.agent.get_actions(self.states)
+            # actions = self.agent.get_actions(self.states)
+            actions = self.agent.get_actions_softmax(self.states)
 
             # Store the SARS
             # states, actions and terminals are appended before env.step and rewards after because
