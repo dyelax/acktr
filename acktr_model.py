@@ -87,7 +87,7 @@ class ACKTRModel:
 
             #value output layer
             self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
-            self.value_preds = tf.squeeze(self.value_preds)
+            self.value_preds = tf.squeeze(self.value_preds, axis=1)
 
     #        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
     #        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
@@ -149,7 +149,8 @@ class ACKTRModel:
 
 
     def get_values(self, s_batch):
-        v_s = self.sess.run([self.value_preds], feed_dict={self.x_batch: s_batch})
+        v_s = self.sess.run(self.value_preds, feed_dict={self.x_batch: s_batch})
+        print v_s.shape
         return v_s
 
 
