@@ -37,16 +37,16 @@ def ts2xy(ts):
     return x, y
 
 
-def plot_curve(xs, ys, color, label):
+def plot_curve(xs, ys, color, label, zorder):
     ymeans = np.mean(ys, axis=0)
     ystds = np.std(ys, axis=0)
 
     xs, ymeans_rolling = window_func(xs, ymeans, EPISODES_WINDOW, np.mean)
     _, ystds_rolling = window_func(xs, ystds, EPISODES_WINDOW, np.mean)
 
-    plt.plot(xs, ymeans_rolling, color=color, label=label)
+    plt.plot(xs, ymeans_rolling, color=color, label=label, zorder=zorder)
     plt.fill_between(xs, ymeans_rolling - ystds_rolling, ymeans_rolling + ystds_rolling,
-                     facecolor=color, color=color, alpha=0.5, interpolate=True)
+                     facecolor=color, color=color, alpha=0.5, interpolate=True, zorder=zorder)
 
     # Without rolling average
     # plt.plot(xs, ymeans)
@@ -54,7 +54,7 @@ def plot_curve(xs, ys, color, label):
     #                  facecolor=color, color=color, alpha=0.5, interpolate=True)
 
 
-def plot_results(dirs, num_timesteps, color, label):
+def plot_results(dirs, num_timesteps, color, label, zorder=0):
     tslist = []
     for dir in dirs:
         ts = load_results(dir)
@@ -68,7 +68,7 @@ def plot_results(dirs, num_timesteps, color, label):
     xs = np.linspace(1, num_timesteps, 1000)
     ys = np.array([np.interp(xs, run[0], run[1]) for run in runs])
 
-    plot_curve(xs, ys, color, label)
+    plot_curve(xs, ys, color, label, zorder)
 
 
 def main():
@@ -87,17 +87,17 @@ def main():
                         help='List of log directories for the OpenAI Baselines ACKTR implementation',
                         nargs = '*',
                         # default=['./save/baselines/pong/acktr/*'])
-                        default=['./save/results/baselines/breakout/acktr/*'])
+                        default=['./save/baselines/breakout/acktr/*'])
     parser.add_argument('--trpo_dirs',
                         help='List of log directories for the OpenAI Baselines TRPO implementation',
                         nargs = '*',
                         # default=['./save/baselines/pong/trpo/*'])
-                        default=['./save/results/baselines/breakout/trpo/*'])
+                        default=['./save/baselines/breakout/trpo/*'])
     parser.add_argument('--a2c_dirs',
                         help='List of log directories for the OpenAI Baselines A2C implementation',
                         nargs = '*',
                         # default=['./save/baselines/pong/a2c/*'])
-                        default=['./save/results/baselines/breakout/a2c/*'])
+                        default=['./save/baselines/breakout/a2c/*'])
     parser.add_argument('--ours_color',
                         help='The color with which to plot our ACKTR results',
                         default='magenta')
@@ -111,7 +111,8 @@ def main():
                         help='The color with which to plot the OpenAI Baselines A2C results',
                         default='orange')
     parser.add_argument('--num_timesteps', type=int, default=int(10e6))
-    parser.add_argument('--title', help = 'Title of plot', default = 'Pong')
+    # parser.add_argument('--title', help = 'Title of plot', default = 'Pong')
+    parser.add_argument('--title', help = 'Title of plot', default = 'Breakout')
     args = parser.parse_args()
 
     get_dir(os.path.dirname(args.save_path))
@@ -125,7 +126,7 @@ def main():
 
     ours_dirs = []
     for dir in args.ours_dirs: ours_dirs += glob(dir)
-    plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)')
+    plot_results(ours_dirs, args.num_timesteps, args.ours_color, 'ACKTR (Ours)', zorder=1)
 
     acktr_dirs = []
     for dir in args.acktr_dirs: acktr_dirs += glob(dir)
