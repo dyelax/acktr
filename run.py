@@ -75,26 +75,28 @@ class Runner:
 
         # Flipping from num_steps x num_envs to num_envs x num_steps
         #  (40 x 32 to 32 x 40)
+        # print len(self.batch_terminals_buff), len(self.batch_terminals_buff[0])
         batch_states = np.array(self.batch_states_buff).swapaxes(1, 0)
         batch_actions = np.array(self.batch_actions_buff).swapaxes(1, 0)
         batch_rewards = np.array(self.batch_rewards_buff).swapaxes(1, 0)
         batch_terminals = np.array(self.batch_terminals_buff).swapaxes(1, 0)
-
-        batch_terminals = batch_terminals[:, 1:]
+        
+        # batch_terminals = batch_terminals[:, 1:]
 
         # Loop over envs and Compute the discounted reward
+        discounted_rewards = []
         for i, (env_rewards, env_terminals) in enumerate(zip(batch_rewards, batch_terminals)):
             # The value of the next_states for each step in the current env
-            values_of_next_states = self.agent.get_values(batch_states[self.num_steps:])
-            discounted_rewards = []
+            values_of_next_states = self.agent.get_values(batch_states[i, self.num_steps:])
+            discounted_env = []
 
             # For each step in the env
-            for step in self.num_steps:
+            for step in xrange(self.num_steps):
                 r_d = 0
                 discount = 1
 
                 # Discount over the 20 next states
-                for j in self.num_steps:
+                for j in xrange(self.num_steps):
                     reward = env_rewards[step + j]
                     terminal = env_terminals[step + j]
 
@@ -107,14 +109,15 @@ class Runner:
                     discount *= self.args.gamma
 
                 # Add value of next state if the last state num steps ahead is not terminal
-                if not batch_terminals[j + self.num_steps] and j == self.num_steps - 1:
+                if not batch_terminals[i, j + self.num_steps] and j == self.num_steps - 1:
                     r_d += values_of_next_states[step]
 
-                discounted_rewards.append(r_d)
+                discounted_env.append(r_d)
+            discounted_rewards.append(discounted_env)
 
         # Reshape into (batch_size,) + element.shape
-        batch_states = batch_states[:self.num_steps].reshape((-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
-        batch_actions = batch_actions[:self.num_steps].flatten()
+        batch_states = batch_states[:, :self.num_steps].reshape((-1, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS))
+        batch_actions = batch_actions[:, :self.num_steps].flatten()
         batch_rewards = np.array(discounted_rewards).flatten() # discounted_rewards is already 20 long
 
         return batch_states, batch_actions, batch_rewards
