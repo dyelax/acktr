@@ -166,7 +166,7 @@ def get_env(env_name, results_save_dir, seed, num_envs):
             sub_env = make_atari(env_name)
             sub_env.seed(seed + env_num)
 
-            if env_num == 0:
+            if env_num == 0 and num_envs > 1:
                 # Wrap first env in default monitor for video output
                 # Results will be transformed into baselines monitor style at the end of the run
                 sub_env = gym.wrappers.Monitor(sub_env, results_save_dir)
