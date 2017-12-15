@@ -150,7 +150,6 @@ class ACKTRModel:
 
     def get_values(self, s_batch):
         v_s = self.sess.run(self.value_preds, feed_dict={self.x_batch: s_batch})
-        print v_s.shape
         return v_s
 
 
