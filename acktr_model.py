@@ -33,17 +33,49 @@ class ACKTRModel:
         self.summary_writer = tf.summary.FileWriter(self.args.summary_save_dir, self.sess.graph)
 
 
-    def fully_connected_layer(self, inputs, input_size, output_size, name='fc_layer', init_scale=1.0):
-        w = tf.get_variable("%s/W" % name, [input_size, output_size], initializer=ortho_init(init_scale))
-        b = tf.get_variable("%s/b" % name, [output_size], initializer=tf.constant_initializer(0.0))
-#        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
-#        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
-        outputs = tf.matmul(inputs, w) + b
-#        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
-        return outputs
+    def fully_connected_layer(self, inputs, output_size, name='fc_layer', init_scale=1.0, activation=None):
+#         w = tf.get_variable("%s/W" % name, [input_size, output_size], initializer=ortho_init(init_scale))
+#         b = tf.get_variable("%s/b" % name, [output_size], initializer=tf.constant_initializer(0.0))
+# #        w = tf.Variable(tf.truncated_normal(shape=[input_size, output_size], stddev=0.01, seed=self.args.seed), name=("%s/W" % name))
+# #        b = tf.Variable(tf.truncated_normal(shape=[output_size], stddev=0.01, seed=self.args.seed), name=("%s/b" % name))
+#         outputs = tf.matmul(inputs, w) + b
+# #        self.layer_collection.register_fully_connected(params=(w,b), inputs=inputs, outputs=outputs)
+#         return outputs
 
+        functional_layer = tf.layers.Dense(
+            output_size,
+            kernel_initializer=ortho_init(init_scale),
+            bias_initializer=tf.constant_initializer(0.0),
+            name=name)
+        pre_activations=functional_layer(inputs)
+        self.layer_collection.register_fully_connected(
+            inputs=inputs,
+            outputs=pre_activations,
+            params=(functional_layer.kernel, functional_layer.bias))
+        return activation(pre_activations) if activation else pre_activations
+
+    def conv2d(self, inputs, kernel_size, stride, output_channels, name='conv_layer'):
+        functional_layer = tf.layers.Conv2D(
+                    output_channels,
+                    kernel_size=kernel_size,
+                    strides=stride,
+                    kernel_initializer=ortho_init(np.sqrt(2)),
+                    bias_initializer=tf.constant_initializer(0.0),
+                    padding="VALID",
+                    activation=None,
+                    name=name)
+        pre_activations=functional_layer(inputs)
+        self.layer_collection.register_conv2d(
+            inputs=inputs,
+            outputs=pre_activations,
+            params=(functional_layer.kernel, functional_layer.bias), 
+            strides=(1,)+stride+(1,), 
+            padding="VALID")
+        return tf.nn.relu(pre_activations)
 
     def define_graph(self):
+        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
+
 #        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.learning_rate = tf.placeholder(dtype=tf.float32)
         self.x_batch = tf.placeholder(dtype=tf.float32, shape=[None, c.IN_HEIGHT, c.IN_WIDTH, c.IN_CHANNELS])
@@ -51,26 +83,36 @@ class ACKTRModel:
         self.actor_labels = tf.placeholder(dtype=tf.float32)
         self.critic_labels = tf.placeholder(dtype=tf.float32)
 
+        self.global_step = tf.Variable(0, name="step", trainable=False)
+
 #        self.layer_collection = tf.contrib.kfac.layer_collection.LayerCollection()
 
         with tf.variable_scope("model", reuse=False):
 
             #convs
             channel_sizes = [c.IN_CHANNELS] + c.CHANNEL_SIZES
+            #why???
             prev_layer = tf.cast(self.x_batch, tf.float32)
             for i in xrange(c.NUM_CONV_LAYERS):
                 in_channels, out_channels = channel_sizes[i], channel_sizes[i+1]
-                kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
-                w_shape = kernel_size + (in_channels, out_channels)
-                w = tf.get_variable("conv_%d/W" % i, w_shape, initializer=ortho_init(np.sqrt(2)))
-                b = tf.get_variable("conv_%d/b" % i, [out_channels], initializer=tf.constant_initializer(0.0))
-    #            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i), )
-    #            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
+                #kernel_size, stride = c.CONV_KERNEL_SIZES[i], (1,) + c.CONV_STRIDES[i] + (1,)
+                kernel_size, stride = c.CONV_KERNEL_SIZES[i], c.CONV_STRIDES[i]
 
-                cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
-    #            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
-    #                outputs=cur_layer, strides=stride, padding="VALID")
-                cur_layer = tf.nn.relu(cur_layer)
+
+                cur_layer = self.conv2d(prev_layer, kernel_size, stride, out_channels, name="conv_%d/W" % i)
+    #             w_shape = kernel_size + (in_channels, out_channels)
+    #             w = tf.get_variable("conv_%d/W" % i, w_shape, initializer=ortho_init(np.sqrt(2)))
+    #             b = tf.get_variable("conv_%d/b" % i, [out_channels], initializer=tf.constant_initializer(0.0))
+    # #            w = tf.Variable(tf.truncated_normal(shape=w_shape, stddev=0.01, seed=self.args.seed), name=("conv_%d/W" % i), )
+    # #            b = tf.Variable(tf.truncated_normal(shape=[out_channels], stddev=0.01, seed=self.args.seed), name=("conv_%d/b" % i))
+
+    #             cur_layer = tf.nn.conv2d(prev_layer, filter=w, strides=stride, padding="VALID") + b
+    # #            self.layer_collection.register_conv2d(params=(w, b), inputs=prev_layer,
+    # #                outputs=cur_layer, strides=stride, padding="VALID")
+    #             cur_layer = tf.nn.relu(cur_layer)
+                
+
+
                 prev_layer = cur_layer
 
             #fully connected layer (last shared)
@@ -78,21 +120,25 @@ class ACKTRModel:
             flat_sz = conv_shape[1].value * conv_shape[2].value * conv_shape[3].value
             flattened = tf.reshape(cur_layer, shape=[-1, flat_sz])
 
-            fc_layer = self.fully_connected_layer(flattened, flat_sz, c.FC_SIZE, 'fc_layer', init_scale=np.sqrt(2))
-            fc_layer = tf.nn.relu(fc_layer)
+            #tanh?
+            fc_layer = self.fully_connected_layer(flattened, c.FC_SIZE, 'fc_layer', init_scale=np.sqrt(2), activation=tf.nn.relu)
 
             #policy output layer
-            self.policy_logits = self.fully_connected_layer(fc_layer, c.FC_SIZE, self.num_actions, 'policy_logits')
+            self.policy_logits = self.fully_connected_layer(fc_layer, self.num_actions, 'policy_logits')
             self.policy_probs = tf.nn.softmax(self.policy_logits)
 
             #value output layer
-            self.value_preds = self.fully_connected_layer(fc_layer, c.FC_SIZE, 1, 'value_fc_layer')
+            self.value_preds = self.fully_connected_layer(fc_layer, 1, 'value_fc_layer')
             self.value_preds = tf.squeeze(self.value_preds, axis=1)
 
+            #seed?
+            self.layer_collection.register_categorical_predictive_distribution(self.policy_logits)
+            self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1.0)
     #        self.layer_collection.register_categorical_predictive_distribution(self.policy_logits, seed=self.args.seed)
     #        self.layer_collection.register_normal_predictive_distribution(self.value_preds, var=1, seed=self.args.seed)
 
             params = tf.trainable_variables() #"model" scope's variables
+
 
 
         #intentionally defined outside of scope.. Loss calcluations:
@@ -107,20 +153,72 @@ class ACKTRModel:
 
         self.total_loss = self.actor_loss + 0.5 * self.critic_loss
 
-        pg_fisher_loss = -tf.reduce_mean(logpac)
-        sample_net = self.value_preds + tf.random_normal(tf.shape(self.value_preds))
-        vf_fisher_loss = -1.0 * tf.reduce_mean(tf.pow(self.value_preds - tf.stop_gradient(sample_net), 2))
-        joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
+        # pg_fisher_loss = -tf.reduce_mean(logpac)
+        # sample_net = self.value_preds + tf.random_normal(tf.shape(self.value_preds))
+        # vf_fisher_loss = -1.0 * tf.reduce_mean(tf.pow(self.value_preds - tf.stop_gradient(sample_net), 2))
+        # joint_fisher_loss = pg_fisher_loss + vf_fisher_loss
 
 
         #Gradients and updates:
 
         #params = find_trainable_variables("model")
         grads = tf.gradients(self.total_loss, params)
+        grad_params = list(zip(grads, params))
 
-        self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
-                    momentum=0.9, kfac_update=1, epsilon=0.01,
-                    stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
+        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(layer_collection=self.layer_collection, damping=self.args.damping_lambda,
+                                                            learning_rate=self.learning_rate, cov_ema_decay=self.args.moving_avg_decay,
+                                                            momentum=self.args.kfac_momentum, norm_constraint=self.args.kfac_norm_constraint)
+        
+        
+
+
+
+        cov_variable_thunks, cov_update_thunks, inv_variable_thunks, inv_update_thunks = optimizer.create_ops_and_vars_thunks()
+
+        self.cov_variable_ops = [thunk() for thunk in cov_variable_thunks]
+        self.cov_update_ops = [thunk() for thunk in cov_update_thunks]
+        self.cov_update_op = tf.group(*self.cov_update_ops)
+        self.inv_variable_ops = [thunk() for thunk in inv_variable_thunks]
+        self.inv_update_ops = [thunk() for thunk in inv_update_thunks]
+
+        queue = tf.contrib.kfac.op_queue
+        enqueue_op = queue.enqueue(self.inv_update_ops)
+        self.q_runner = tf.train.QueueRunner(queue, [enqueue_op])
+
+        self.train_op = optimizer.apply_gradients(grad_params)
+
+        self.global_step_op = tf.assign(global_step, global_step+1)
+        
+        # self.cov_update_op = optimizer.cov_update_op
+        #nec? 
+        # self.inv_update_op = optimizer.inv_update_op
+        #for q_runner in train! queue.dequeue()
+        # inv_update_dict = optimizer.inv_updates_dict
+        #nec? 
+        # self.factors = self.layer_collection.get_factors()
+
+        
+        # #make q_runner and self.dequeue_op (called qr in the original kfac.py optimizer that we are reimplementing)
+        # # factorOps_dummy = self.inv_update_ops #list(inv_update_dict.values())
+        # queue = tf.FIFOQueue(1, [tf.Operation for item in factorOps_dummy],
+        #                      shapes=[item.get_shape() for item in factorOps_dummy])
+        # enqueue_op = queue.enqueue(self.inv_update_ops)
+        # #note, the above is instead of the following lines on the original kfac implementation:
+        #     # enqueue_op = tf.cond(tf.logical_and(tf.equal(tf.mod(self.stats_step, self._kfac_update), tf.convert_to_tensor(
+        #     #     0)), tf.greater_equal(self.stats_step, self._stats_accum_iter)), lambda: queue.enqueue(self.computeStatsEigen()), tf.no_op)
+        # self.dequeue_op = queue.dequeue()
+        # self.q_runner = tf.train.QueueRunner(queue, [enqueue_op])
+
+        # self.global_step_op = tf.assign(global_step, global_step+1)
+
+
+
+        #lr correct?
+
+
+        # self.optim = optim = kfac.KfacOptimizer(learning_rate=self.learning_rate, clip_kl=0.001,
+        #             momentum=0.9, kfac_update=1, epsilon=0.01,
+        #             stats_decay=0.99, async=1, cold_iter=10, max_grad_norm=0.5)
 
 
 #        optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(self.learning_rate,
@@ -130,8 +228,8 @@ class ACKTRModel:
 #        self.train_op = optimizer.minimize(self.total_loss, global_step=self.global_step)
 
         # TODO: is this return value necessary?
-        update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
-        self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
+        # update_stats_op = optim.compute_and_apply_stats(joint_fisher_loss, var_list=params)
+        # self.train_op, self.q_runner, self.global_step_op = optim.apply_gradients(list(zip(grads,params)))
 
         #summaries
         self.a_loss_summary = tf.summary.scalar("actor_loss", self.actor_loss)
@@ -168,13 +266,13 @@ class ACKTRModel:
         k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
         advantage = np.reshape(advantage, [-1]) #turn into row vec
 
-        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op]
+        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op, self.cov_update_op]
         feed_dict = {self.x_batch: s_batch,
                     self.actor_labels: advantage,
                     self.critic_labels: k_step_return,
                     self.actions_taken: a_batch,
                     self.learning_rate: self.args.lr * (1 - percent_done)}
-        step, a_summary, c_summary, _ = self.sess.run(sess_args, feed_dict=feed_dict)
+        step, a_summary, c_summary, _, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
         if (step - 1) % self.args.summary_save_freq == 0:
             self.summary_writer.add_summary(a_summary, global_step=step)
