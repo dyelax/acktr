@@ -168,69 +168,21 @@ class ACKTRModel:
         optimizer = tf.contrib.kfac.optimizer.KfacOptimizer(layer_collection=self.layer_collection, damping=self.args.damping_lambda,
                                                             learning_rate=self.learning_rate, cov_ema_decay=self.args.moving_avg_decay,
                                                             momentum=self.args.kfac_momentum, norm_constraint=self.args.kfac_norm_constraint)
-
-        cov_variable_thunks, cov_update_thunks, inv_variable_thunks, inv_update_thunks = optimizer.create_ops_and_vars_thunks()
-
-        self.cov_variable_ops = [thunk() for thunk in cov_variable_thunks]
-        self.cov_update_ops = [thunk() for thunk in cov_update_thunks]
-        self.cov_update_op = tf.group(*self.cov_update_ops)
-        self.inv_variable_ops = [thunk() for thunk in inv_variable_thunks]
-        # inv_update_ops = [thunk() for thunk in inv_update_thunks]
-        
-        estimator = optimizer._fisher_est
-        self.inv_update_ops =  []
-        for factor in estimator._layers.get_factors():
-            # with estimator._inv_device_context_generator():
-            for op in factor.make_inverse_update_ops():
-                self.inv_update_ops.append(op)
-
         self.train_op = optimizer.apply_gradients(grad_params)
 
 
-        # q = tf.contrib.kfac.op_queue.OpQueue(self.inv_update_ops)
-        # self.q_runner = tf.train.QueueRunner(q, [q.next_op(self.sess)])
+        #found how do to do these few lines in https://github.com/gd-zhang/ACKTR/blob/master/models/model.py
+        self.cov_update_op = optimizer.cov_update_op
+        inv_update_op = optimizer.inv_update_op
+        inv_update_dict = optimizer.inv_updates_dict
+        factors = self.layer_collection.get_factors()
+        inv_updates = list(inv_update_dict.values())
+        queue = tf.FIFOQueue(1, [item.dtype for item in inv_updates],
+                                [item.get_shape() for item in inv_updates])
 
-        # queue = tf.contrib.kfac.op_queue
-        # enqueue_op = queue.enqueue(self.inv_update_ops)
-        # self.q_runner = tf.train.QueueRunner(queue, [enqueue_op])
-
-        # self.train_op = optimizer.apply_gradients(grad_params)
-
-        # self.global_step_op = tf.assign(global_step, global_step+1)
-        
-        # self.cov_update_op = optimizer.cov_update_op
-        # nec? 
-        # self.inv_update_op = optimizer.inv_update_op
-        # for q_runner in train! queue.dequeue()
-        # inv_update_dict = optimizer.inv_updates_dict
-        # nec? 
-        # self.factors = self.layer_collection.get_factors()
-
-        # print self.inv_update_ops[0].dtype
-        # print inv_update_ops
-        # exit()
-
-        #make q_runner and self.dequeue_op (called qr in the original kfac.py optimizer that we are reimplementing)
-        factorOps_dummy = [i for i in self.inv_update_ops if not type(i) is tf.Operation] #list(inv_update_dict.values()) is the dict values the same as the ops???
-        # dtypes = [factorOps_dummy[0].dtype for i in xrange(len(factorOps_dummy))]
-        # print dtypes
-        # for i in xrange(len(factorOps_dummy)):
-        #     print "----"
-        #     print i
-        #     print factorOps_dummy[i]
-        #     if not type(factorOps_dummy[i]) is tf.Operation:
-        #         print factorOps_dummy[i].dtype
-        #     # print "*"
-        #     # print inv_update_ops[i]
-        #     # if inv_update_ops[i].OpDef != tf.no_op:
-        #     #     print inv_update_ops[i].dtype
-        #     # print "*"
-        queue = tf.FIFOQueue(1, [item.dtype for item in factorOps_dummy], #should be tf.float32???
-                             shapes=[item.get_shape() for item in factorOps_dummy])
-        enqueue_op = queue.enqueue(factorOps_dummy)
-        #note, the above is instead of the following lines on the original kfac implementation:
-            # enqueue_op = tf.cond(tf.logical_and(tf.equal(tf.mod(self.stats_step, self._kfac_update), tf.convert_to_tensor(
-            #     0)), tf.greater_equal(self.stats_step, self._stats_accum_iter)), lambda: queue.enqueue(self.computeStatsEigen()), tf.no_op)
+        # enqueue_op = tf.cond(tf.equal(tf.mod(self.global_step_tensor, self.inv_iter), tf.convert_to_tensor(0)),
+        #                      lambda: queue.enqueue(self.model.inv_update_dict.value()), tf.no_op)
+        enqueue_op = queue.enqueue(list(inv_updates))
         self.dequeue_op = queue.dequeue()
         self.q_runner = tf.train.QueueRunner(queue, [enqueue_op])
 
@@ -293,13 +245,13 @@ class ACKTRModel:
         k_step_return = np.reshape(k_step_return, [-1]) #turn into row vec
         advantage = np.reshape(advantage, [-1]) #turn into row vec
 
-        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op, self.cov_update_op]
+        sess_args = [self.global_step_op, self.a_loss_summary, self.c_loss_summary, self.train_op, self.cov_update_op, self.dequeue_op]
         feed_dict = {self.x_batch: s_batch,
                     self.actor_labels: advantage,
                     self.critic_labels: k_step_return,
                     self.actions_taken: a_batch,
                     self.learning_rate: self.args.lr * (1 - percent_done)}
-        step, a_summary, c_summary, _, _ = self.sess.run(sess_args, feed_dict=feed_dict)
+        step, a_summary, c_summary, _, _, _ = self.sess.run(sess_args, feed_dict=feed_dict)
 
         if (step - 1) % self.args.summary_save_freq == 0:
             self.summary_writer.add_summary(a_summary, global_step=step)

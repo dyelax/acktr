@@ -117,7 +117,6 @@ class Runner:
     def run(self):
         print '-' * 30
 
-        # TODO: Figure out why q_runner is so important
         coord = tf.train.Coordinator()
         enqueue_threads = self.agent.q_runner.create_threads(self.agent.sess, coord=coord, start=True)
 
