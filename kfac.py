@@ -819,6 +819,9 @@ class KfacOptimizer():
             # get a list of factor loading tensors
             factorOps_dummy = self.computeStatsEigen()
 
+            for item in factorOps_dummy:
+                print item.dtype
+            exit()
             # define a queue for the list of factor loading tensors
             queue = tf.FIFOQueue(1, [item.dtype for item in factorOps_dummy], shapes=[
                                  item.get_shape() for item in factorOps_dummy])
